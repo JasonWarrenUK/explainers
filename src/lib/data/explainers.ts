@@ -1,4 +1,5 @@
 import type { ExplainerMeta } from './types';
+import { getCollectionForExplainer } from './collections';
 
 export const explainers: ExplainerMeta[] = [
 	{
@@ -80,4 +81,26 @@ export function getAllTags(): string[] {
 		for (const t of e.tags) tags.add(t);
 	}
 	return [...tags].sort();
+}
+
+export interface StaticParent {
+	href: string;
+	label: string;
+}
+
+/**
+ * Static parent resolution: collection if the explainer has one, else its
+ * first tag, else the top-level hub. TODO: replace with dynamic
+ * came-from tracking (query param or referrer) so the back-link reflects
+ * which hub the reader actually arrived from, since membership is
+ * non-exclusive.
+ */
+export function getStaticParent(explainer: ExplainerMeta): StaticParent {
+	const collection = getCollectionForExplainer(explainer.id);
+	if (collection) return { href: `/collection/${collection.id}`, label: collection.title };
+	if (explainer.tags.length > 0) {
+		const tag = explainer.tags[0];
+		return { href: `/tag/${tag}`, label: `Tagged “${tag}”` };
+	}
+	return { href: '/', label: 'All explainers' };
 }

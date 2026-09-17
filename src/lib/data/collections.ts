@@ -19,3 +19,7 @@ export const collections: Collection[] = [
 export function getCollection(id: string): Collection | undefined {
 	return collections.find((c) => c.id === id);
 }
+
+export function getCollectionForExplainer(explainerId: string): Collection | undefined {
+	return collections.find((c) => c.explainerIds.includes(explainerId));
+}

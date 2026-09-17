@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getExplainer } from '$lib/data/explainers';
+import { getExplainer, getStaticParent } from '$lib/data/explainers';
 import { explainerComponents } from '$lib/components/explainers/registry';
 import type { PageLoad } from './$types';
 
@@ -11,5 +11,5 @@ export const load: PageLoad = async ({ params }) => {
 	if (!loadComponent) error(404, `No component registered for "${params.id}"`);
 
 	const mod = await loadComponent();
-	return { meta, component: mod.default };
+	return { meta, component: mod.default, parent: getStaticParent(meta) };
 };
