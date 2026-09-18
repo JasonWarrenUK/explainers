@@ -10,6 +10,9 @@ node_modules
 /.svelte-kit
 /build
 
+# Inbox for single-file explainers awaiting a Svelte port
+/docs/imports/
+
 # OS
 .DS_Store
 Thumbs.db
