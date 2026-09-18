@@ -9,5 +9,7 @@ export const explainerComponents: Record<string, () => Promise<{ default: Compon
 	'the-older-layer': () => import('./TheOlderLayer.svelte'),
 	'the-cost-of-looking-fine': () => import('./TheCostOfLookingFine.svelte'),
 	'4-englishes': () => import('./FourEnglishes.svelte'),
-	'what-everyone-said': () => import('./WhatEveryoneSaid.svelte')
+	'what-everyone-said': () => import('./WhatEveryoneSaid.svelte'),
+	'the-country-that-means-no': () => import('./TheCountryThatMeansNo.svelte'),
+	'norway-is-not-a-boolean': () => import('./NorwayIsNotABoolean.svelte')
 };

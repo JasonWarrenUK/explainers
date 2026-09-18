@@ -64,6 +64,20 @@ export const explainers: ExplainerMeta[] = [
 		blurb:
 			'How you find out what a group thinks, when the only thing you can collect is what individuals say, one at a time.',
 		tags: ['data', 'ethics', 'software-design']
+	},
+	{
+		id: 'the-country-that-means-no',
+		title: 'The Country That Means No',
+		blurb:
+			"Norway's country code is NO, and one of the most widely used file formats reads a bare NO as the word no. What did the format you saved in decide you meant?",
+		tags: ['data', 'software-design']
+	},
+	{
+		id: 'norway-is-not-a-boolean',
+		title: 'Norway Is Not a Boolean',
+		blurb:
+			'One deploy config written out in ten serialisation formats, with notes on what each did to it without asking. What did the choice buy, and who has been paying since?',
+		tags: ['data', 'software-design']
 	}
 ];
 
