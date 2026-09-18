@@ -78,6 +78,13 @@ export const explainers: ExplainerMeta[] = [
 		blurb:
 			'One deploy config written out in ten serialisation formats, with notes on what each did to it without asking. What did the choice buy, and who has been paying since?',
 		tags: ['data', 'software-design']
+	},
+	{
+		id: 'last-verified',
+		title: 'Last Verified',
+		blurb:
+			'A five-sentence letter was cited 608 times, and four fifths of the citations dropped the condition that made it true. What does a review process decide, in advance, not to look at?',
+		tags: ['software-design', 'documentation']
 	}
 ];
 

@@ -11,5 +11,6 @@ export const explainerComponents: Record<string, () => Promise<{ default: Compon
 	'4-englishes': () => import('./FourEnglishes.svelte'),
 	'what-everyone-said': () => import('./WhatEveryoneSaid.svelte'),
 	'the-country-that-means-no': () => import('./TheCountryThatMeansNo.svelte'),
-	'norway-is-not-a-boolean': () => import('./NorwayIsNotABoolean.svelte')
+	'norway-is-not-a-boolean': () => import('./NorwayIsNotABoolean.svelte'),
+	'last-verified': () => import('./LastVerified.svelte')
 };
