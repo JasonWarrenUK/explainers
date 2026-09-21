@@ -7,7 +7,15 @@ export interface Token {
 }
 
 export type NoteKind = 'gain' | 'cost' | 'flat';
-export type SpecimenLine = [text: string] | [text: string, kind: NoteKind, note: string];
+
+export interface SpecimenNote {
+	kind: NoteKind;
+	text: string;
+	/** Technical notes stay folded away until the reader asks for them. */
+	technical?: boolean;
+}
+
+export type SpecimenLine = [text: string, ...notes: SpecimenNote[]];
 
 export type Tokeniser = (line: string, family: string) => Token[];
 

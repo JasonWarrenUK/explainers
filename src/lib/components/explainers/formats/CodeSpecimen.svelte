@@ -6,30 +6,32 @@
 		family,
 		tokenise,
 		numbered = false,
-		notesHidden = false
+		showTechnical = false
 	}: {
 		lines: SpecimenLine[];
 		family: string;
 		tokenise: Tokeniser;
 		numbered?: boolean;
-		notesHidden?: boolean;
+		showTechnical?: boolean;
 	} = $props();
 </script>
 
 <!--
 	Themed by the host explainer through --spec-* custom properties, so the
-	same specimen sits inside either palette.
+	same specimen sits inside any palette.
 -->
 <div class="code" class:numbered>
-	{#each lines as [text, kind, note], i (i)}
+	{#each lines as [text, ...notes], i (i)}
 		<div class="ln">
 			{#if numbered}<span class="num">{i + 1}</span>{/if}
 			<!-- kept on one line: .src is white-space: pre -->
 			<span class="src">{#if text === ''}&nbsp;{:else}{#each tokenise(text, family) as token, j (j)}{#if token.kind}<span class="t-{token.kind}">{token.text}</span>{:else}{token.text}{/if}{/each}{/if}</span>
 		</div>
-		{#if kind && !notesHidden}
-			<div class="note {kind}"><span>{note}</span></div>
-		{/if}
+		{#each notes as note, k (k)}
+			{#if !note.technical || showTechnical}
+				<div class="note {note.kind}" class:technical={note.technical}><span>{note.text}</span></div>
+			{/if}
+		{/each}
 	{/each}
 </div>
 
@@ -83,6 +85,9 @@
 		display: inline-block;
 		border-left: 3px solid;
 		padding-left: 0.6rem;
+	}
+	.note.technical span {
+		border-left-style: double;
 	}
 	.note.gain span {
 		border-color: var(--spec-gain);

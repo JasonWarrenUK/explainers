@@ -1,18 +1,36 @@
 <script lang="ts">
-	import CodeSpecimen from './formats/CodeSpecimen.svelte';
 	import { createTokeniser } from './formats/tokenise';
-	import { CARDS, DOCKETS, FORMATS, OTHERS, RULES } from './norway-is-not-a-boolean-data';
+	import ParseCards from './norway-is-not-a-boolean/ParseCards.svelte';
+	import SpecimenBlock from './norway-is-not-a-boolean/SpecimenBlock.svelte';
+	import { DEPLOY_FILE, GATES, RECORD } from './norway-is-not-a-boolean/gates';
+	import { RULES } from './norway-is-not-a-boolean/rules';
+	import type { FinePrint, Gate, Picks } from './norway-is-not-a-boolean/types';
 
 	const tokenise = createTokeniser(RULES);
-	const encoder = new TextEncoder();
 
-	let currentId = $state(FORMATS[0].id);
-	let notesHidden = $state(false);
-	let openCards = $state<boolean[]>(CARDS.map(() => false));
+	let picks = $state<Picks>({
+		marker: null,
+		typing: null,
+		numbers: null,
+		dates: null,
+		reasons: null,
+		who: null,
+		shape: null,
+		many: null,
+		change: null,
+		reach: null
+	});
 
-	const current = $derived(FORMATS.find((format) => format.id === currentId) ?? FORMATS[0]);
-	// computed from the rendered text rather than asserted
-	const byteCount = $derived(encoder.encode(current.lines.map(([text]) => text).join('\n')).length);
+	const answered = $derived.by(() => {
+		const firstOpen = GATES.findIndex((gate) => picks[gate.id] === null);
+		return firstOpen === -1 ? GATES.length : firstOpen;
+	});
+	const visible = $derived(GATES.slice(0, Math.min(answered + 1, GATES.length)));
+	const remaining = $derived(GATES.length - answered);
+	// the decision on screen and unanswered is not one of the ones still to come
+	const stillHidden = $derived(GATES.length - visible.length);
+
+	const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
 </script>
 
 <svelte:head>
@@ -25,254 +43,395 @@
 	/>
 </svelte:head>
 
+{#snippet finePrint(item: FinePrint)}
+	<details class="fine">
+		<summary>{item.summary}</summary>
+		<div class="fine-body">
+			{#if item.docket}
+				<article class="docket">
+					<div class="dh">
+						<span class="name">{item.docket.name}</span>
+						<span class="meta">{item.docket.meta}</span>
+					</div>
+					<p class="claim">{item.docket.claim}</p>
+					<div class="for">
+						<h5>The case for</h5>
+						<p>{item.docket.forText}</p>
+					</div>
+					<div class="against">
+						<h5>What it costs</h5>
+						<p>{item.docket.againstText}</p>
+					</div>
+					<p class="pays"><b>Who pays</b>{item.docket.pays}</p>
+				</article>
+			{/if}
+			{#each item.minorFormats ?? [] as minor (minor.name)}
+				<div class="minor">
+					<p class="mn">{minor.name}</p>
+					<p>{minor.good}</p>
+					<p class="cost">{minor.bad}</p>
+				</div>
+			{/each}
+			{#each item.paragraphs ?? [] as paragraph, i (i)}
+				<p class="fine-text">{paragraph}</p>
+			{/each}
+			{#if item.cards}
+				<ParseCards cards={item.cards} />
+			{/if}
+			{#if item.specimen}
+				<SpecimenBlock specimen={item.specimen} {tokenise} />
+			{/if}
+		</div>
+	</details>
+{/snippet}
+
+{#snippet decision(gate: Gate)}
+	{@const chosen = picks[gate.id]}
+	<div class="q">
+		<div class="q-lab">Your decision</div>
+		<p class="q-text">{gate.text}</p>
+		<div class="opts">
+			{#each gate.options as option (option.key)}
+				<button
+					class="opt"
+					type="button"
+					aria-pressed={chosen === option.key}
+					onclick={() => (picks[gate.id] = option.key)}
+				>
+					{option.label}
+				</button>
+			{/each}
+		</div>
+	</div>
+	{#if chosen}
+		{@const answer = gate.answers[chosen]}
+		<div class="answer">
+			<p class="verdict">{answer.verdict}</p>
+			{#each answer.paragraphs as paragraph, i (i)}
+				<p>{paragraph}</p>
+			{/each}
+		</div>
+		{#if answer.specimen}
+			<SpecimenBlock specimen={answer.specimen} {tokenise} />
+		{/if}
+		{#if answer.finePrint}
+			<div class="fines">
+				{#each answer.finePrint as item (item.summary)}
+					{@render finePrint(item)}
+				{/each}
+			</div>
+		{/if}
+	{/if}
+{/snippet}
+
 <div class="page">
 	<div class="wrap">
 		<header class="mast">
-			<p class="eyebrow">Serialisation formats · a comparison</p>
+			<p class="eyebrow">Serialisation formats · ten decisions</p>
 			<h1>Norway Is<br />Not a <em>Boolean</em></h1>
 			<p class="sub">
 				JSON · JSONC · JSON5 · YAML · TOML · .env<br />XML · Turtle · CSV · NDJSON<br />and the ones
 				that never get invited
 			</p>
 			<p class="lede">
-				Somebody chose the format your service reads its configuration from. What did that choice
-				buy, and who has been paying for it since?
+				Everything you have ever typed into a box was stored in a format somebody chose years before
+				you typed it. What did that format decide you meant?
 			</p>
 		</header>
 
 		<section>
-			<h2>One record, ten ways</h2>
-			<p class="sec-note">
-				Same deploy config throughout. The notes are what each format did to it without asking.
-				Worth saying up front: a configuration file is JSON's worst job, so the tally below is
-				unfair to it. Its real case is the docket further down.
+			<h2>In 2020, geneticists renamed some human genes.</h2>
+			<p>
+				Not because the old names were wrong. Because spreadsheets kept changing them. A gene called
+				SEPT2 would be opened in a spreadsheet and saved back as the second of September, and enough
+				published research had been quietly corrupted this way that the naming committee gave up
+				and changed the genes.
 			</p>
-
-			<ul class="chips" role="group" aria-label="Choose a format">
-				{#each FORMATS as format (format.id)}
-					<li>
-						<button
-							class="chip"
-							type="button"
-							aria-pressed={format.id === currentId}
-							onclick={() => (currentId = format.id)}
-						>
-							{format.label}
-						</button>
-					</li>
-				{/each}
-			</ul>
-			<div class="readout">
-				<span>lines <b>{current.lines.length}</b></span>
-				<span>bytes <b>{byteCount}</b></span>
-				<span>comments <b>{current.comments ? 'yes' : 'no'}</b></span>
-				<span>spec <b>{current.spec}</b></span>
-			</div>
-			<p class="stance">{current.stance}</p>
-			<div class="specimen">
-				<CodeSpecimen lines={current.lines} family={current.family} {tokenise} numbered {notesHidden} />
-			</div>
-			<button
-				class="toggle"
-				aria-pressed={!notesHidden}
-				onclick={() => (notesHidden = !notesHidden)}
-			>
-				{notesHidden ? 'Show margin notes' : 'Hide margin notes'}
-			</button>
+			<p>
+				Nobody decided that. No person looked at SEPT2 and thought: that is a date. A program
+				written years earlier had been told that anything shaped like a date is a date, and it was
+				doing what it was told, at the moment it was told to open a file.
+			</p>
+			<p>
+				The same rule has a country in it. Norway's two-letter code is NO, and in one of the most
+				widely used file formats in the world a bare NO is one of the ways of writing the word no. A
+				list of countries can lose Norway and report no error at all.
+			</p>
+			<p>
+				The problem has a name among people who configure servers: the Norway problem. A deploy file
+				says <code>region: NO</code>. The service starts, and the region it starts in is
+				<code>false</code>.
+			</p>
+			<SpecimenBlock specimen={DEPLOY_FILE} {tokenise} />
 		</section>
 
 		<section>
-			<h2>Three different jobs</h2>
+			<div class="howto">
+				<div class="howto-lab">How this page works</div>
+				<p>
+					It asks you to decide things, and nothing further down appears until you have. That is
+					deliberate: the cost of a decision is invisible until you have made it, and being told
+					about it in advance does not work.
+				</p>
+				<p>
+					Each answer shows its own consequences and nobody else's. To see what another answer would
+					have cost, change it; the page changes with you and keeps the answers you gave further
+					down. The technical detail is folded away under each answer for anybody who wants it.
+				</p>
+			</div>
+
+			<h2>{GATES[0].heading}</h2>
 			<p>
-				Most format arguments are two people doing unrelated work. A file a human edits at 2am and
-				a payload crossing a network boundary share almost no requirements, and the properties that
-				matter invert between them. Comments are load-bearing in one and dead weight in the other; a
-				byte of overhead per field is free in one and ruinous in the other.
+				Here is a real kind of record: a single small object in a museum, written out the way a
+				curator would put it on a card.
 			</p>
-			<p>The comparison only means anything inside a column.</p>
-			<div class="jobs">
-				<div class="job">
-					<h4>Configuration</h4>
-					<dl>
-						<dt>Written by</dt>
-						<dd>a person, by hand, usually in a hurry</dd>
-						<dt>Read by</dt>
-						<dd>one program, at startup</dd>
-						<dt>What matters</dt>
-						<dd>comments, unambiguous types, diffs a reviewer can read, failing loudly</dd>
-						<dt>Serious contenders</dt>
-						<dd class="picks">TOML, YAML, JSONC, HCL, CUE</dd>
-					</dl>
-				</div>
-				<div class="job">
-					<h4>Interchange</h4>
-					<dl>
-						<dt>Written by</dt>
-						<dd>a machine, at a boundary you do not control</dd>
-						<dt>Read by</dt>
-						<dd>somebody else's stack, in a language you did not pick</dd>
-						<dt>What matters</dt>
+			<div class="record">
+				<dl>
+					{#each RECORD as [field, value] (field)}
+						<dt>{field}</dt>
 						<dd>
-							one interpretation everywhere, versioning that survives a deploy skew, debuggability
+							{#each value.split('\n') as line, i (i)}{#if i > 0}<br />{/if}{line}{/each}
 						</dd>
-						<dt>Serious contenders</dt>
-						<dd class="picks">JSON, Protobuf, XML, CBOR, Avro</dd>
-					</dl>
-				</div>
-				<div class="job">
-					<h4>Storage and stream</h4>
-					<dl>
-						<dt>Written by</dt>
-						<dd>a machine, continuously, at volume</dd>
-						<dt>Read by</dt>
-						<dd>a query engine, or a tail</dd>
-						<dt>What matters</dt>
-						<dd>bytes, parse speed, appendability, surviving a truncated write</dd>
-						<dt>Serious contenders</dt>
-						<dd class="picks">NDJSON, Parquet, Avro, CSV, Arrow</dd>
-					</dl>
-				</div>
+					{/each}
+				</dl>
 			</div>
-		</section>
-
-		<section>
-			<h2>Five arguments, and one different question</h2>
-			<p class="sec-note">
-				Each gets its strongest case made properly, then what it costs, then who pays. The first
-				five are arguing about syntax for the same thing; the sixth disagrees about what the thing
-				is.
-			</p>
-			{#each DOCKETS as docket (docket.name)}
-				<article class="docket">
-					<div class="dh">
-						<span class="name">{docket.name}</span>
-						<span class="meta">{docket.meta}</span>
-					</div>
-					<p class="claim">{docket.claim}</p>
-					<div class="for">
-						<h5>The case for</h5>
-						<p>{docket.forText}</p>
-					</div>
-					<div class="against">
-						<h5>What it costs</h5>
-						<p>{docket.againstText}</p>
-					</div>
-					<p class="pays"><b>Who pays</b>{docket.pays}</p>
-				</article>
-			{/each}
-		</section>
-
-		<section>
-			<h2>Who else is in the room</h2>
 			<p>
-				These lose the argument by never being in it. Each is the correct answer to a question the
-				JSON-versus-YAML fight does not ask.
+				Eight facts, all of them ordinary. Six of them are about to be damaged by decisions you have
+				not made yet. Look at them once more before we start: the accession number, the country, the
+				weight, the registry number, the date and the note.
 			</p>
-			{#each OTHERS as other (other.name)}
-				<div class="minor">
-					<p class="mn">{other.name}</p>
-					<p>{other.good}</p>
-					<p class="cost">{other.bad}</p>
-				</div>
-			{/each}
+			{@render decision(GATES[0])}
 		</section>
 
-		<section>
-			<h2>The ambiguity surface</h2>
-			<p>
-				A format's real cost is the set of inputs where two conforming parsers disagree. None of
-				these are bugs. Every one of them is a document behaving as specified, and none of them
-				raise an error.
-			</p>
-			<p class="sec-note">Tap a card for what the parser returns.</p>
-			<div class="cards">
-				{#each CARDS as card, i (i)}
-					<button
-						class="card"
-						type="button"
-						aria-expanded={openCards[i]}
-						onclick={() => (openCards[i] = !openCards[i])}
-					>
-						<span class="fmt">{card.fmt}</span>
-						<span class="in">{card.inp}</span>
-						{#if openCards[i]}
-							<span class="out">
-								<span class="res">&rarr; {card.out}</span>
-								<span class="why">{card.why}</span>
-							</span>
-						{:else}
-							<span class="cue">tap for the result</span>
-						{/if}
-					</button>
+		{#each visible.slice(1) as gate (gate.id)}
+			<section>
+				<h2>{gate.heading}</h2>
+				{#each gate.lead as paragraph, i (i)}
+					<p>{paragraph}</p>
 				{/each}
-			</div>
-		</section>
+				{#if gate.leadByMarker && picks.marker}
+					<p>{gate.leadByMarker[picks.marker]}</p>
+				{/if}
 
-		<section>
-			<h2>What actually decides it</h2>
-			<p class="thesis">
-				Three questions, none about syntax.
-				<strong>Is this a document, a record or a claim?</strong> A document has prose, order and
-				structure living inside its text, and XML or something XML-shaped is the honest answer. A
-				claim is something a stranger will need to merge with theirs, and the tell is identity
-				having to survive leaving the file; that is RDF. Everything else here is competing for
-				records, which are fields in a bag. <strong>Who edits it?</strong> A human under pressure
-				needs comments, forgiving diffs and types that cannot surprise them, which is TOML's entire
-				brief. A machine writing at volume needs a schema, small bytes and tolerance for version
-				skew, which is Protobuf, and every text format is a compromise you make to keep the thing
-				debuggable. <strong>Does anything change after it is written?</strong> If one field gets
-				updated in place, no text format is the answer and SQLite is.
-			</p>
-			<p>
-				The cost that bites is never verbosity. It is the ambiguity surface plus the version skew,
-				meaning the gap between the specification you wrote against and the one the reader
-				implements. JSON's surface is tiny and its skew is nil, and that, rather than any elegance,
-				is why it won. YAML's surface is the largest here by an order of magnitude. TOML acquired
-				skew for the first time in December 2025 and is still absorbing it. <code>.env</code> has no
-				specification at all, which makes its surface unmeasurable and its blast radius small enough
-				that nobody minds.
-			</p>
-			<p>
-				If you want a default: TOML for anything a person edits, JSON for anything crossing a
-				boundary, NDJSON the moment there is more than one of something, Protobuf when the boundary
-				is hot and both ends are yours, XML when the thing is genuinely a document, JSON-LD when the
-				consumer is somebody you will never meet, SQLite when the file gets written to after it is
-				created. YAML when the tool demands it, with every string quoted and a schema in CI. And
-				<code>.env</code> stays where it is, holding twelve strings, because the moment it holds a
-				tree you needed a different file.
-			</p>
+				{#if gate.id === 'who'}
+					<p>There are three jobs, and a comparison only means anything inside one of them.</p>
+					<div class="jobs">
+						<div class="job">
+							<h4>Configuration</h4>
+							<dl>
+								<dt>Written by</dt>
+								<dd>a person, by hand, usually in a hurry</dd>
+								<dt>Read by</dt>
+								<dd>one program, at startup</dd>
+								<dt>What matters</dt>
+								<dd>comments, unambiguous types, diffs a reviewer can read, failing loudly</dd>
+								<dt>Serious contenders</dt>
+								<dd class="picks">TOML, YAML, JSONC, HCL, CUE</dd>
+							</dl>
+						</div>
+						<div class="job">
+							<h4>Interchange</h4>
+							<dl>
+								<dt>Written by</dt>
+								<dd>a machine, at a boundary you do not control</dd>
+								<dt>Read by</dt>
+								<dd>somebody else's stack, in a language you did not pick</dd>
+								<dt>What matters</dt>
+								<dd>
+									one interpretation everywhere, versioning that survives a deploy skew,
+									debuggability
+								</dd>
+								<dt>Serious contenders</dt>
+								<dd class="picks">JSON, Protobuf, XML, CBOR, Avro</dd>
+							</dl>
+						</div>
+						<div class="job">
+							<h4>Storage and stream</h4>
+							<dl>
+								<dt>Written by</dt>
+								<dd>a machine, continuously, at volume</dd>
+								<dt>Read by</dt>
+								<dd>a query engine, or a tail</dd>
+								<dt>What matters</dt>
+								<dd>bytes, parse speed, appendability, surviving a truncated write</dd>
+								<dt>Serious contenders</dt>
+								<dd class="picks">NDJSON, Parquet, Avro, CSV, Arrow</dd>
+							</dl>
+						</div>
+					</div>
+				{/if}
 
-			<div class="disclose">
-				<h3>What this page costs</h3>
+				{@render decision(gate)}
+
+				{#if gate.id === 'typing' && picks.typing === 'quoted' && picks.marker === 'position'}
+					<div class="howto aside">
+						<div class="howto-lab">Worth noting, given both your answers</div>
+						<p>
+							You picked the style where bare values are guessed at, and then said you would quote
+							everything. That combination is exactly what experienced people do, and it works.
+							Quote every value in such a file and none of the failures above can reach you.
+						</p>
+						<p>
+							It is a discipline rather than a property, which is the difference that matters.
+							Nothing in the file enforces it and no error appears when somebody forgets. Somebody will forget.
+						</p>
+					</div>
+				{/if}
+			</section>
+		{/each}
+
+		{#if remaining > 0}
+			<section>
+				<div class="howto waiting">
+					<div class="howto-lab">There is more below</div>
+					<p>
+						{#if stillHidden === 0}
+							One short section follows, and you may skip it.
+						{:else if stillHidden === 1}
+							One more decision follows.
+						{:else}
+							{NUMBER_WORDS[stillHidden]} more decisions follow{answered === 0
+								? ', once you have settled the first one'
+								: ''}.
+						{/if}
+					</p>
+				</div>
+			</section>
+		{:else}
+			<section>
+				<h2>What the ten have in common.</h2>
 				<p>
-					This is a recommendation, so it is a party, and it owes the same accounting as everything
-					above. The framing here rewards formats with small specifications, which is a preference
-					rather than a fact. It undersells YAML: the ergonomics genuinely are better than anything
-					else here, and most of the failures listed get caught by schema validation you should be
-					running regardless.
+					Skip this if you like. It is a summary, and summaries are written for people who have
+					finished.
 				</p>
 				<p>
-					It also treats "two parsers disagree" as the dominant risk. That is true in a polyglot
-					system and close to irrelevant if exactly one language ever reads the file. If your whole
-					stack is Python, half the objections above evaporate and the YAML section is unfair.
+					You have now made ten decisions, and between them they are most of what separates every
+					format anybody uses. Not one of them was about syntax. They were about who is coming, what
+					they are allowed to assume and what the file is willing to promise.
 				</p>
-				<p>
-					And the honest version of the TOML section is harsher than the one written: deep nesting
-					is worse than "awkward", people abandon the format over it, and 1.1 fixed it late enough
-					that the fix is currently its own problem.
-				</p>
-				<p>
-					The RDF section is the one to distrust hardest, because it was added on my recommendation
-					rather than requested. Its costs land on whoever adopts first and its benefits are network
-					effects that may never arrive, and twenty-five years of the semantic web mostly not
-					happening is evidence against the case above rather than a tooling accident somebody will
-					fix. Weighted honestly, JSON-LD as schema.org markup is the recommendation and the triple
-					model is a curiosity you should find interesting rather than adopt.
-				</p>
-			</div>
-		</section>
+				<div class="points">
+					<div class="point">
+						<div class="point-n">The first</div>
+						<p>
+							<strong>Every format guesses on your behalf.</strong> The question is never whether it
+							guesses but whether it tells you when. A format that turns NO into no is not broken; it
+							is doing precisely what it was designed to do, at the wrong moment, to the wrong two
+							letters.
+						</p>
+					</div>
+					<div class="point">
+						<div class="point-n">The second</div>
+						<p>
+							<strong>The silent failures are the expensive ones.</strong> Nothing on this page
+							produced an error message. A file that will not open is a nuisance you fix in ten
+							minutes. A file that opens and means something slightly different is a problem you
+							find in three years, in something unrelated, if you find it at all.
+						</p>
+					</div>
+					<div class="point">
+						<div class="point-n">The third</div>
+						<p>
+							<strong>Somebody always pays, and it is rarely the person choosing.</strong> The
+							convenience is taken now, by the person writing the file. The bill arrives later and
+							lands on whoever has to read it, merge it or explain to a room why the catalogue has
+							no Norwegian objects in it.
+						</p>
+					</div>
+				</div>
+
+				<h3>The ten formats, and what each one is actually for</h3>
+				<ul class="tally">
+					<li><span class="nm">JSON</span> The one everything speaks. Strict and small, and it forbids remarks entirely.</li>
+					<li><span class="nm">JSONC and JSON5</span> The same thing with remarks allowed, because people kept needing them. Neither is a standard anybody is obliged to follow.</li>
+					<li><span class="nm">YAML</span> The kindest to write and the least safe to trust. Where Norway goes to die.</li>
+					<li><span class="nm">TOML</span> Built for files a person edits, and the only one here that treats a date as a date. Awkward once things nest deeply.</li>
+					<li><span class="nm">.env</span> The floor. Twelve lines of text with no kinds, no lists and no rules of any sort. Every system in the world already reads it.</li>
+					<li><span class="nm">XML</span> The only one that can mark up a sentence from the inside, which is why every document you have ever opened is made of it. Heavy on every line.</li>
+					<li><span class="nm">Turtle and JSON-LD</span> Statements rather than records, named so that strangers can join theirs to yours. You pay for that first and alone.</li>
+					<li><span class="nm">CSV</span> One line per thing, commas between. It goes anywhere and understands nothing, and a spreadsheet can rewrite your data on the way in.</li>
+					<li><span class="nm">NDJSON</span> One line per thing, but each line properly fenced. What you want the moment there is more than one of something.</li>
+					<li><span class="nm">SQLite</span> Not a text file at all. The one arrangement here where a single fact can be changed without rewriting everything around it, which is why national libraries keep things in it.</li>
+				</ul>
+
+				<div class="fines">
+					<details class="fine">
+						<summary>What actually decides it, for people who choose formats for a living</summary>
+						<div class="fine-body">
+							<p class="thesis">
+								Three questions, none about syntax.
+								<strong>Is this a document, a record or a claim?</strong> A document has prose,
+								order and structure living inside its text, and XML or something XML-shaped is the
+								honest answer. A claim is something a stranger will need to merge with theirs, and
+								the tell is identity having to survive leaving the file; that is RDF. Everything
+								else here is competing for records, which are fields in a bag.
+								<strong>Who edits it?</strong> A human under pressure needs comments, forgiving
+								diffs and types that cannot surprise them, which is TOML's entire brief. A machine
+								writing at volume needs a schema, small bytes and tolerance for version skew, which is Protobuf. Every text format is a compromise you make to keep the thing
+								debuggable. <strong>Does anything change after it is written?</strong> If one field
+								gets updated in place, no text format is the answer and SQLite is.
+							</p>
+							<p class="fine-text">
+								The cost that bites is never verbosity. It is the ambiguity surface plus the version
+								skew, meaning the gap between the specification you wrote against and the one the
+								reader implements. JSON's surface is tiny and its skew is nil, and that, rather than
+								any elegance, is why it won. YAML's surface is the largest here by an order of
+								magnitude. TOML acquired skew for the first time in December 2025 and is still
+								absorbing it. <code>.env</code> has no specification at all, which makes its surface
+								unmeasurable and its blast radius small enough that nobody minds.
+							</p>
+							<p class="fine-text">
+								If you want a default: TOML for anything a person edits, JSON for anything crossing
+								a boundary, NDJSON the moment there is more than one of something, Protobuf when the
+								boundary is hot and both ends are yours, XML when the thing is genuinely a document,
+								JSON-LD when the consumer is somebody you will never meet, SQLite when the file gets
+								written to after it is created. YAML when the tool demands it, with every string
+								quoted and a schema in CI. And <code>.env</code> stays where it is, holding twelve
+								strings, because the moment it holds a tree you needed a different file.
+							</p>
+						</div>
+					</details>
+				</div>
+
+				<div class="disclose">
+					<h3>What this page costs</h3>
+					<p>
+						This is a recommendation, so it is a party and owes the same accounting as
+						everything above. The framing here rewards formats with small specifications, which is a
+						preference rather than a fact. It undersells YAML: the ergonomics genuinely are better
+						than anything else here, and most of the failures listed get caught by schema validation
+						you should be running regardless.
+					</p>
+					<p>
+						It also treats "two parsers disagree" as the dominant risk. That is true in a polyglot
+						system and close to irrelevant if exactly one language ever reads the file. If your
+						whole stack is Python, half the objections above evaporate and the YAML answers are
+						unfair.
+					</p>
+					<p>
+						And the honest version of the TOML answer is harsher than the one written: deep nesting
+						is worse than "awkward", people abandon the format over it, and 1.1 fixed it late enough
+						that the fix is currently its own problem.
+					</p>
+					<p>
+						The RDF answer is the one to distrust hardest, because it was added on my recommendation
+						rather than requested. Its costs land on whoever adopts first and its benefits are
+						network effects that may never arrive, and twenty-five years of the semantic web mostly
+						not happening is evidence against the case above rather than a tooling accident somebody
+						will fix. Weighted honestly, JSON-LD as schema.org markup is the recommendation and the
+						triple model is a curiosity you should find interesting rather than adopt.
+					</p>
+					<p>
+						The form costs something too. Each answer shows only its own consequences, so one
+						reading of this page covers about a third of it. The rest is there, behind the answers
+						you did not give.
+					</p>
+				</div>
+			</section>
+		{/if}
 
 		<footer>
+			A companion to <a href="/explainer/what-exists"><em>What Exists</em></a>, which stopped where
+			this one starts.<br />
 			Specimen values are synthetic. Line and byte counts are computed from the rendered text rather
 			than asserted.<br />
 			TOML 1.1.0 released 18 December 2025; ecosystem support was still uneven at the start of 2026
@@ -341,10 +500,14 @@
 		background: var(--mark);
 		color: var(--ink);
 	}
-	.page :focus-visible {
+	.page :global(:focus-visible) {
 		outline: 2px solid var(--amber);
 		outline-offset: 3px;
 		border-radius: 2px;
+	}
+	a {
+		color: var(--violet);
+		text-underline-offset: 3px;
 	}
 
 	/* ---------- masthead ---------- */
@@ -413,7 +576,7 @@
 		font-size: clamp(1.65rem, 6vw, 2.15rem);
 		line-height: 1.12;
 		letter-spacing: -0.014em;
-		margin: 0 0 10px;
+		margin: 0 0 16px;
 		color: var(--ink);
 	}
 	h3 {
@@ -423,99 +586,188 @@
 		letter-spacing: 0.13em;
 		text-transform: uppercase;
 		color: var(--muted);
-		margin: 0 0 12px;
-	}
-	.sec-note {
-		font-family: var(--mono);
-		font-size: 13px;
-		line-height: 1.65;
-		color: var(--muted);
-		margin: 0 0 26px;
+		margin: 32px 0 12px;
 	}
 	p {
 		margin: 0 0 18px;
 	}
-
-	/* ---------- format chips ---------- */
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 7px;
-		margin: 0 0 18px;
-		padding: 0;
-		list-style: none;
-	}
-	.chip {
+	code {
 		font-family: var(--mono);
-		font-size: 13px;
-		font-weight: 500;
-		letter-spacing: 0.05em;
-		background: var(--panel);
-		color: var(--muted);
-		border: 1px solid var(--edge);
-		border-radius: 3px;
-		padding: 8px 12px;
-		cursor: pointer;
-		transition:
-			color 0.12s,
-			background 0.12s;
-	}
-	.chip:hover {
-		color: var(--ink);
+		font-size: 0.85em;
+		color: var(--violet);
 		background: var(--code);
-	}
-	.chip[aria-pressed='true'] {
-		background: var(--mark);
-		border-color: var(--amber);
-		color: var(--ink);
-		font-weight: 600;
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 1px 5px;
 	}
 
-	/* ---------- specimen ---------- */
-	.readout {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0 22px;
+	/* ---------- instruction blocks ---------- */
+	.howto {
+		border: 1px solid var(--rule);
+		border-radius: 4px;
+		background: var(--panel);
+		padding: 16px 18px;
+		margin: 0 0 28px;
+	}
+	.howto.waiting {
+		border-style: dashed;
+		background: transparent;
+		margin: 0;
+	}
+	.howto.aside {
+		margin: 26px 0 0;
+		border-left: 4px solid var(--mark);
+	}
+	.howto-lab {
 		font-family: var(--mono);
 		font-size: 12px;
-		letter-spacing: 0.07em;
+		font-weight: 600;
+		letter-spacing: 0.13em;
 		text-transform: uppercase;
 		color: var(--muted);
-		border-top: 1px solid var(--rule);
-		border-bottom: 1px solid var(--rule);
-		padding: 10px 0;
-		line-height: 1.9;
+		margin-bottom: 8px;
 	}
-	.readout b {
-		color: var(--ink);
-		font-weight: 600;
-	}
-	.stance {
-		font-family: var(--serif);
-		font-size: 17.5px;
-		line-height: 1.5;
-		color: var(--ink);
-		margin: 18px 0 16px;
-		padding-left: 16px;
-		border-left: 3px solid var(--mark);
-	}
-	.specimen {
+	.howto p {
+		font-size: 16.5px;
+		line-height: 1.55;
 		margin: 0 0 10px;
 	}
-	.toggle {
+	.howto p:last-child {
+		margin: 0;
+	}
+
+	/* ---------- the record card ---------- */
+	.record {
+		background: var(--panel);
+		border: 1px solid var(--edge);
+		border-radius: 4px;
+		padding: 18px 20px;
+		margin: 0 0 22px;
+	}
+	.record dl {
+		margin: 0;
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 5px 18px;
+		align-items: baseline;
+	}
+	.record dt {
+		font-family: var(--mono);
+		font-size: 11.5px;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--muted);
+		white-space: nowrap;
+	}
+	.record dd {
+		margin: 0;
+		line-height: 1.5;
+		word-break: break-word;
+	}
+
+	/* ---------- decisions ---------- */
+	.q {
+		border-left: 3px solid var(--mark);
+		padding: 2px 0 2px 18px;
+		margin: 30px 0 0;
+	}
+	.q-lab {
 		font-family: var(--mono);
 		font-size: 12px;
-		letter-spacing: 0.07em;
+		font-weight: 600;
+		letter-spacing: 0.13em;
 		text-transform: uppercase;
-		background: none;
-		border: 0;
-		border-bottom: 1px solid var(--edge);
+		color: var(--amber);
+		margin-bottom: 8px;
+	}
+	.q-text {
+		font-size: 19px;
+		line-height: 1.5;
+		font-weight: 500;
+		font-variation-settings: 'opsz' 60, 'SOFT' 20, 'WONK' 1;
+		margin: 0 0 16px;
+	}
+	.opts {
+		display: grid;
+		gap: 8px;
+	}
+	.opt {
+		font-family: var(--serif);
+		font-size: 16.5px;
+		line-height: 1.45;
+		text-align: left;
+		background: var(--panel);
+		color: var(--ink);
+		border: 1px solid var(--edge);
+		border-radius: 4px;
+		padding: 12px 14px;
+		cursor: pointer;
+		transition: background 0.12s;
+	}
+	.opt:hover {
+		background: var(--code);
+	}
+	.opt[aria-pressed='true'] {
+		background: var(--mark);
+		border-color: var(--amber);
+		font-weight: 550;
+	}
+
+	.answer {
+		border-left: 3px solid var(--violet);
+		padding-left: 18px;
+		margin: 26px 0 0;
+	}
+	.answer p:last-child {
+		margin: 0;
+	}
+	.answer .verdict {
+		font-size: 18.5px;
+		line-height: 1.45;
+		font-weight: 550;
+		margin: 0 0 10px;
+	}
+
+	/* ---------- fine print ---------- */
+	.fines {
+		margin: 18px 0 0;
+		display: grid;
+		/* minmax(0, …) stops a wide code specimen inside from stretching the column */
+		grid-template-columns: minmax(0, 1fr);
+		gap: 8px;
+	}
+	.fine {
+		border: 1px solid var(--rule);
+		border-radius: 4px;
+		background: var(--panel);
+	}
+	.fine summary {
+		font-family: var(--mono);
+		font-size: 13px;
+		letter-spacing: 0.02em;
 		color: var(--muted);
 		cursor: pointer;
-		padding: 5px 0;
+		padding: 11px 15px;
 	}
-	.toggle:hover {
+	.fine summary:hover,
+	.fine[open] summary {
 		color: var(--ink);
+	}
+	.fine[open] summary {
+		border-bottom: 1px solid var(--rule);
+	}
+	.fine-body {
+		padding: 16px 17px 17px;
+	}
+	.fine-body > :global(*:first-child) {
+		margin-top: 0;
+	}
+	.fine-body > :last-child {
+		margin-bottom: 0;
+	}
+	.fine-text {
+		font-size: 16.5px;
+		line-height: 1.55;
 	}
 
 	/* ---------- job columns ---------- */
@@ -567,14 +819,6 @@
 	}
 
 	/* ---------- dockets ---------- */
-	.docket {
-		border-top: 1px solid var(--rule);
-		padding: 26px 0 4px;
-	}
-	.docket:first-of-type {
-		border-top: 0;
-		padding-top: 6px;
-	}
 	.dh {
 		display: flex;
 		align-items: baseline;
@@ -610,13 +854,21 @@
 		text-transform: uppercase;
 		margin: 18px 0 6px;
 	}
+	.docket p {
+		font-size: 16.5px;
+		line-height: 1.55;
+	}
+	.docket .claim {
+		font-size: 18.5px;
+		line-height: 1.45;
+	}
 	.for h5 {
 		color: var(--green);
 	}
 	.against h5 {
 		color: var(--red);
 	}
-	.pays {
+	.docket .pays {
 		font-family: var(--mono);
 		font-size: 13px;
 		line-height: 1.65;
@@ -636,12 +888,10 @@
 	}
 
 	/* ---------- minor formats ---------- */
-	.minor {
-		border: 1px solid var(--rule);
-		border-radius: 4px;
-		padding: 16px 17px;
-		margin: 0 0 10px;
-		background: var(--panel);
+	.minor + .minor {
+		border-top: 1px solid var(--rule);
+		margin-top: 16px;
+		padding-top: 16px;
 	}
 	.minor .mn {
 		font-family: var(--mono);
@@ -663,90 +913,59 @@
 		color: var(--muted);
 	}
 
-	/* ---------- parse cards ---------- */
-	.cards {
+	/* ---------- close ---------- */
+	.points {
 		display: grid;
-		gap: 9px;
+		gap: 10px;
+		margin: 26px 0 0;
 	}
-	@media (min-width: 640px) {
-		.cards {
-			grid-template-columns: 1fr 1fr;
-		}
-	}
-	.card {
-		width: 100%;
-		text-align: left;
-		background: var(--panel);
-		border: 1px solid var(--edge);
+	.point {
+		border: 1px solid var(--rule);
+		border-left: 4px solid var(--mark);
 		border-radius: 4px;
-		padding: 14px 15px;
-		cursor: pointer;
-		color: inherit;
+		background: var(--panel);
+		padding: 16px 18px;
+	}
+	.point-n {
 		font-family: var(--mono);
-		display: block;
-		transition: background 0.12s;
-	}
-	.card:hover {
-		background: var(--code);
-	}
-	.card span {
-		display: block;
-	}
-	.card .fmt {
-		font-size: 11.5px;
+		font-size: 12px;
+		font-weight: 600;
 		letter-spacing: 0.13em;
 		text-transform: uppercase;
-		color: var(--muted);
-		margin-bottom: 8px;
+		color: var(--amber);
+		margin-bottom: 6px;
 	}
-	.card .in {
-		font-size: 13.5px;
-		color: var(--ink);
-		word-break: break-word;
+	.point p {
+		margin: 0;
+		font-size: 16.5px;
+		line-height: 1.55;
 	}
-	.card .out {
-		margin-top: 11px;
-		padding-top: 10px;
+	.tally {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.tally li {
 		border-top: 1px solid var(--rule);
+		padding: 12px 0;
+		font-size: 16.5px;
+		line-height: 1.55;
 	}
-	.card .res {
+	.tally .nm {
+		display: block;
+		font-family: var(--mono);
 		font-size: 13.5px;
-		color: var(--red);
-		font-weight: 500;
-		margin-bottom: 7px;
-		word-break: break-word;
+		font-weight: 600;
+		color: var(--amber);
+		letter-spacing: 0.03em;
 	}
-	.card .why {
-		font-size: 13px;
-		line-height: 1.65;
-		color: var(--muted);
-		white-space: normal;
-	}
-	.card .cue {
-		font-size: 11.5px;
-		letter-spacing: 0.11em;
-		text-transform: uppercase;
-		color: var(--faint);
-		margin-top: 9px;
-	}
-
-	/* ---------- close ---------- */
 	.thesis {
-		font-size: 19px;
+		font-size: 17.5px;
 		line-height: 1.55;
 	}
 	.thesis strong {
 		color: var(--amber);
 		font-weight: 650;
-	}
-	code {
-		font-family: var(--mono);
-		font-size: 0.85em;
-		color: var(--violet);
-		background: var(--code);
-		border: 1px solid var(--rule);
-		border-radius: 3px;
-		padding: 1px 5px;
 	}
 	.disclose {
 		border: 1px solid var(--rule);
@@ -758,6 +977,7 @@
 	}
 	.disclose h3 {
 		color: var(--red);
+		margin-top: 0;
 	}
 	.disclose p {
 		font-size: 16.5px;
@@ -774,8 +994,7 @@
 		line-height: 1.8;
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.chip,
-		.card {
+		.opt {
 			transition: none;
 		}
 	}
