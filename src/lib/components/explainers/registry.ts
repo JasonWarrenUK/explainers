@@ -10,7 +10,7 @@ export const explainerComponents: Record<string, () => Promise<{ default: Compon
 	'the-cost-of-looking-fine': () => import('./TheCostOfLookingFine.svelte'),
 	'4-englishes': () => import('./FourEnglishes.svelte'),
 	'what-everyone-said': () => import('./WhatEveryoneSaid.svelte'),
-	'the-country-that-means-no': () => import('./TheCountryThatMeansNo.svelte'),
 	'norway-is-not-a-boolean': () => import('./NorwayIsNotABoolean.svelte'),
-	'last-verified': () => import('./LastVerified.svelte')
+	'last-verified': () => import('./LastVerified.svelte'),
+	'colour-is-a-defect': () => import('./colour-is-a-defect/ColourIsADefect.svelte')
 };
