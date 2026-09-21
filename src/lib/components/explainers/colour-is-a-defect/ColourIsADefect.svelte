@@ -749,7 +749,10 @@
 	.tabs {
 		display: flex;
 		gap: 0;
-		margin: 0 0 26px;
+		/* margin-inline stays auto (from .page > *) so this lines up with the masthead above it;
+		   only margin-bottom is set here. The source's `margin: 0 0 26px` shorthand zeroed the
+		   inline margins and knocked the tab row out of alignment at anything under ~1150px wide. */
+		margin-block: 0 26px;
 		border-bottom: 1px solid var(--rule);
 		overflow-x: auto;
 		scrollbar-width: none;
