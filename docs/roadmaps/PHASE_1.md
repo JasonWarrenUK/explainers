@@ -74,12 +74,12 @@ Phase 1 closes those gaps in that order. A design system built in Claude Design 
 
 **Goal:** Changing a shared component no longer risks nine explainers silently, and nothing ships that the repo cannot explain.
 
-- [ ] **5QA.1**: Delete or archive the root-level source files now every explainer lives in `src`
+- [x] **5QA.1**: Delete or archive the root-level source files now every explainer lives in `src`
   - Note: `what-nobody-meant.tsx`, `unhurried-edition.jsx`, `4-englishes.html` and `what-everyone-said.html`. Git history holds them either way. Also add `.DS_Store` to `.gitignore`.
 - [ ] **5QA.2**: Test the routing layer: parent resolution, tag filtering and collection membership _(blocked: depends on 3NV.1)_
   - Note: `explainers.test.ts` is the only test so far, and Vitest with testing-library is already wired.
 - [ ] **5QA.3**: Test the extracted kit components: interaction, keyboard access and readout correctness _(blocked: depends on 2PR.2, 2PR.3)_
-- [ ] **5QA.4**: Add a registry integrity test asserting every `ExplainerMeta` id resolves to a component and back
+- [x] **5QA.4**: Add a registry integrity test asserting every `ExplainerMeta` id resolves to a component and back
   - Note: Cheap guard against the failure mode of adding an explainer to one list and not the other.
 - [ ] **5QA.5**: Run an accessibility pass over the toys: keyboard operation, focus order, reduced motion and screen-reader labelling _(blocked: depends on 2PR.4)_
   - Note: A soft milestone member: it stays visible in M5 without gating anything downstream.
@@ -178,6 +178,7 @@ graph LR
 	5QA.4 --> 5QA.6
 	5QA.5 -.-> M5
 	5QA.6 --> M5
-	class 1DS.1,2PR.1,3NV.1,3NV.3,4PB.1,4PB.2,4PB.5,5QA.1,5QA.4 todo
+	class 1DS.1,2PR.1,3NV.1,3NV.3,4PB.1,4PB.2,4PB.5 todo
 	class 1DS.2,1DS.3,1DS.4,1DS.5,1DS.6,1DS.7,2PR.2,2PR.3,2PR.4,2PR.5,3NV.2,3NV.4,3NV.5,4PB.3,4PB.4,4PB.6,5QA.2,5QA.3,5QA.5,5QA.6 blocked
+	class 5QA.1,5QA.4 done
 ```
