@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { BANDS, INFO, LAMBDAS, derive } from './model';
 	import type { BandKey, DeriveResult, SimParams } from './model';
@@ -42,7 +43,6 @@
 	let flashTimer: ReturnType<typeof setTimeout> | undefined;
 	let targetHex = $state('#c6a4d6');
 	let solverLines = $state<string[] | null>(null);
-	let raf = 0;
 	let animRaf = 0;
 
 	const res = $derived(derive(sim));
@@ -138,6 +138,10 @@
 		if (animRaf) cancelAnimationFrame(animRaf);
 		playing = false;
 	}
+	onDestroy(() => {
+		stopPlay();
+		clearTimeout(flashTimer);
+	});
 
 	// ---- pin and compare ----
 	function pin() {
