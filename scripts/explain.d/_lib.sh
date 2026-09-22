@@ -19,6 +19,17 @@ need_tty() {
 	[[ -t 0 && -t 1 ]]
 }
 
+# print_table <columns> : render tab-separated rows from stdin as a bordered,
+# themed table that fits the terminal width. <columns> is comma-separated.
+# Replaces `gum table -p`, which in gum 0.17.0 has three defects in print
+# mode: -w/--widths is ignored, the header style lands on the first data row
+# instead of the header (its StyleFunc tests row == 0 but lipgloss numbers
+# the header row -1), and over-wide tables are never wrapped, so the
+# terminal soft-wraps every row into a mess.
+print_table() {
+	bun run "${EXPLAIN_D:?EXPLAIN_D not set}/_table.ts" --columns "$1"
+}
+
 # heading <text>: styled section heading, falls back to plain text without
 # a TTY or without gum.
 heading() {
