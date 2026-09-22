@@ -321,9 +321,9 @@
 		</p>
 	</header>
 
-	<nav class="tabs" role="tablist">
+	<nav class="tabs">
 		{#each TABS as t (t.id)}
-			<button class="tab" class:on={tab === t.id} role="tab" data-n={t.n} aria-selected={tab === t.id} onclick={() => (tab = t.id)}>{t.label}</button>
+			<button class="tab" class:on={tab === t.id} data-n={t.n} aria-current={tab === t.id ? 'page' : undefined} onclick={() => (tab = t.id)}>{t.label}</button>
 		{/each}
 	</nav>
 
