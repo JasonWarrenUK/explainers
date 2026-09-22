@@ -35,6 +35,7 @@ Phase 1 closes those gaps in that order. A design system built in Claude Design 
   - Note: Slider, Button, Control, Readout, Gauge, Toy, Section, Prose and Aside all look like candidates. Repetition has to be shown before anything is extracted.
 - [ ] **2PR.2**: Extract the repeating controls into `$lib/components/explainer-kit`, typed and themed _(blocked: depends on 2PR.1, 1DS.3)_
 - [ ] **2PR.3**: Extract the repeating layout and prose wrappers into the same kit _(blocked: depends on 2PR.1, 1DS.3)_
+  - Note: `formats/` (the tokeniser and `CodeSpecimen`, shared by two explainers) moves into the kit here, beside the unhurried layer. It is shared-layer material that sits under `components/explainers` only because there was nowhere else to put it.
 - [ ] **2PR.4**: Migrate cost-of-looking-fine and the unhurried layer onto the kit, deleting the per-explainer duplicates _(blocked: depends on 2PR.2, 2PR.3)_
 - [ ] **2PR.5**: Write the authoring guide: how to add explainer ten, from data entry through registry to the kit's components _(blocked: depends on 2PR.4)_
   - Note: The pipeline deliverable. Written after the migration, from what it actually taught.
