@@ -81,10 +81,12 @@ tsv_fields() {
 	TSV_FIELD=("${(@ps:\t:)1}")
 }
 
-# require_gum: fail with an actionable message if gum isn't on PATH.
+# require_gum: fail with an actionable message if gum isn't on PATH. Exits
+# 127 (command not found) rather than 1, so a caller such as CI can tell a
+# missing binary apart from a command's own findings, which use 1.
 require_gum() {
 	if ! command -v gum >/dev/null 2>&1; then
 		echo "explain: gum is not installed. Run: brew install gum" >&2
-		exit 1
+		exit 127
 	fi
 }
