@@ -20,7 +20,8 @@ describe('createTokeniser', () => {
 	it('merges unmatched text between tokens into one plain run', () => {
 		expect(tokenise('region: NO', 'yaml')).toEqual([
 			{ text: 'region', kind: 'key' },
-			{ text: ': NO', kind: null }
+			{ text: ': ', kind: null },
+			{ text: 'NO', kind: 'lit' }
 		]);
 		expect(tokenise('region: no', 'yaml').at(-1)).toEqual({ text: 'no', kind: 'lit' });
 	});

@@ -18,7 +18,7 @@ export const RULES: Record<string, TokenRule[]> = {
 		[/^\s*-?\s*[\w.\-\/]+(?=\s*:)/, "key"],
 		[/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/, "str"],
 		[/\b\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z?)?/, "num"],
-		[/\b(?:true|false|null|yes|no|on|off)\b/, "lit"],
+		[/\b(?:[Tt]rue|TRUE|[Ff]alse|FALSE|[Nn]ull|NULL|[Yy]es|YES|[Nn]o|NO|[Oo]n|ON|[Oo]ff|OFF)\b/, "lit"],
 		[/(?<=[:\s\[,])[+-]?\d+(?:\.\d+)?\b/, "num"],
 		[/[|>&*\[\]{},]/, "pun"]
 	],
