@@ -78,16 +78,25 @@ port="$(find_running_port | head -1)" || true
 if [[ -z "$port" ]]; then
 	log="$(mktemp)"
 	bun run --cwd "$EXPLAIN_REPO_ROOT" dev >"$log" 2>&1 &
+	dev_pid=$!
 	disown
 	for _ in $(seq 1 50); do
 		port="$(port_from_log "$log")" || true
 		[[ -n "$port" ]] && break
 		sleep 0.2
 	done
-	rm -f "$log"
 	if [[ -z "$port" ]]; then
-		die "dev server did not report a port in time"
+		# Kill the server we started rather than leave it running untracked,
+		# and show its log first: it holds the reason (port clash, build
+		# error) that the user would otherwise lose. Both steps must be
+		# non-failing under set -e or die never runs.
+		kill "$dev_pid" 2>/dev/null || true
+		echo "--- dev server log ---" >&2
+		cat "$log" >&2 || true
+		rm -f "$log"
+		die "dev server did not report a port in time; see log above"
 	fi
+	rm -f "$log"
 	heading "Started dev server on port $port"
 fi
 
