@@ -1,0 +1,75 @@
+#!/usr/bin/env zsh
+# Description: Show full detail for one explainer, tag or collection
+set -euo pipefail
+
+source "${EXPLAIN_D}/_lib.sh"
+
+border="${EXPLAIN_BORDER_STYLE:-rounded}"
+
+usage() {
+	echo "Usage: explain show [explainers|tags|collections] <id>" >&2
+	echo "Default target is explainers. With no id and a terminal, pick one interactively." >&2
+}
+
+target="${1:-explainers}"
+case "$target" in
+	-h|--help) usage; exit 0 ;;
+esac
+id="${2:-}"
+
+pick_id() {
+	local query="$1"
+	if ! need_tty; then
+		echo "explain show: missing id (no terminal to pick one interactively)" >&2
+		usage
+		exit 1
+	fi
+	run_data "$query" | cut -f1 | gum filter --header "Pick a $2"
+}
+
+case "$target" in
+	explainers)
+		[[ -z "$id" ]] && id=$(pick_id explainers explainer)
+		[[ -z "$id" ]] && exit 0
+		row=$(run_data explainer "$id") || exit 1
+		tsv_fields "$row"
+		local rid="$TSV_FIELD[1]" title="$TSV_FIELD[2]" blurb="$TSV_FIELD[3]" tags="$TSV_FIELD[4]"
+		local collection="$TSV_FIELD[5]" component="$TSV_FIELD[6]" reg_status="$TSV_FIELD[7]" parent="$TSV_FIELD[8]"
+		heading "$title"
+		echo
+		echo "$blurb"
+		echo
+		echo "id:         $rid"
+		echo "tags:       $tags"
+		echo "collection: ${collection:-(none)}"
+		echo "parent:     $parent"
+		echo "component:  ${component:-(missing)} [$reg_status]"
+		;;
+	tags)
+		[[ -z "$id" ]] && id=$(printf '%s\n' $(run_data tags | cut -f1) | gum filter --header "Pick a tag")
+		[[ -z "$id" ]] && exit 0
+		run_data tag "$id" | gum table -s $'\t' -p -b "$border" -c "id,title,tags"
+		;;
+	collections)
+		[[ -z "$id" ]] && id=$(printf '%s\n' $(run_data collections | cut -f1) | gum filter --header "Pick a collection")
+		[[ -z "$id" ]] && exit 0
+		full=$(run_data collection "$id") || exit 1
+		header_row=$(head -1 <<<"$full")
+		member_rows=$(tail -n +2 <<<"$full")
+		tsv_fields "$header_row"
+		local cid="$TSV_FIELD[1]" title="$TSV_FIELD[2]" desc="$TSV_FIELD[3]"
+		heading "$title"
+		echo
+		echo "$desc"
+		echo
+		echo "members:"
+		echo "$member_rows" | while IFS=$'\t' read -r eid etitle; do
+			echo "  - $eid  ($etitle)"
+		done
+		;;
+	*)
+		echo "explain show: unknown target \"$target\"" >&2
+		usage
+		exit 1
+		;;
+esac

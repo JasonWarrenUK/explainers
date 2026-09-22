@@ -1,0 +1,32 @@
+#!/usr/bin/env zsh
+# Description: Show roadmap milestone status and unblocked tasks
+set -euo pipefail
+
+source "${EXPLAIN_D}/_lib.sh"
+
+if [[ ! -f "${EXPLAIN_REPO_ROOT}/.claude/roadmaps.json" ]]; then
+	gum style --foreground "${EXPLAIN_WARN:-11}" \
+		"No .claude/roadmaps.json found. It's gitignored, so a fresh clone won't have one."
+	exit 0
+fi
+
+output=$(run_data roadmap) || exit 1
+
+# Plain prefix matching rather than grep -P: BSD grep (macOS default) has no -P.
+milestones=$(awk -F'\t' '$1 != "unblocked"' <<<"$output" || true)
+unblocked=$(awk -F'\t' '$1 == "unblocked"' <<<"$output" || true)
+
+border="${EXPLAIN_BORDER_STYLE:-rounded}"
+
+heading "Milestones"
+echo "$milestones" | cut -f2- | gum table -s $'\t' -p -b "$border" -c "milestone,name,status counts"
+
+echo
+heading "Unblocked"
+if [[ -n "$unblocked" ]]; then
+	# Note: gum table's -w/--widths has no effect in -p (static print) mode
+	# as of gum 0.17.0, so column width isn't constrained here.
+	echo "$unblocked" | cut -f2- | gum table -s $'\t' -p -b "$border" -c "id,description"
+else
+	echo "(none)"
+fi

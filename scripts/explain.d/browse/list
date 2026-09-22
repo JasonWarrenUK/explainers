@@ -1,0 +1,40 @@
+#!/usr/bin/env zsh
+# Description: List explainers, tags or collections
+set -euo pipefail
+
+source "${EXPLAIN_D}/_lib.sh"
+
+usage() {
+	echo "Usage: explain list [explainers|tags|collections]" >&2
+	echo "Default target is explainers." >&2
+}
+
+target="${1:-explainers}"
+
+border="${EXPLAIN_BORDER_STYLE:-rounded}"
+
+case "$target" in
+	explainers)
+		# Note: gum table's -w/--widths has no effect in -p (static print) mode
+		# as of gum 0.17.0, so column width isn't constrained here.
+		run_data explainers \
+			| gum table -s $'\t' -p -b "$border" -c "id,title,tags"
+		;;
+	tags)
+		run_data tags \
+			| gum table -s $'\t' -p -b "$border" -c "tag,explainers"
+		;;
+	collections)
+		run_data collections \
+			| gum table -s $'\t' -p -b "$border" -c "id,title,members"
+		;;
+	-h|--help)
+		usage
+		exit 0
+		;;
+	*)
+		echo "explain list: unknown target \"$target\"" >&2
+		usage
+		exit 1
+		;;
+esac

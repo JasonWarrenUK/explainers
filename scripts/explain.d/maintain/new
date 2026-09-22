@@ -1,0 +1,45 @@
+#!/usr/bin/env zsh
+# Description: Scaffold a new explainer (component stub + data + registry)
+set -euo pipefail
+
+source "${EXPLAIN_D}/_lib.sh"
+
+if ! need_tty; then
+	echo "explain new: needs a terminal (prompts for id, title, tags, blurb)" >&2
+	exit 1
+fi
+
+id=$(gum input --placeholder "kebab-case-id" --header "Explainer id")
+[[ -z "$id" ]] && exit 0
+
+if [[ ! "$id" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+	die "\"$id\" is not kebab-case"
+fi
+
+existing=$(run_data explainer "$id" 2>/dev/null || true)
+if [[ -n "$existing" ]]; then
+	die "explainer \"$id\" already exists"
+fi
+
+title=$(gum input --placeholder "Title Case Title" --header "Title")
+[[ -z "$title" ]] && exit 0
+
+tags=$(gum input --placeholder "tag-one, tag-two" --header "Tags (comma-separated)")
+
+blurb=$(gum write --placeholder "One or two sentences." --header "Blurb")
+[[ -z "$blurb" ]] && exit 0
+
+heading "Proposed changes"
+bun run "${EXPLAIN_D}/_new-writer.ts" diff "$id" "$title" "$blurb" "$tags"
+
+echo
+if ! gum confirm "Write these changes?"; then
+	echo "Cancelled."
+	exit 0
+fi
+
+bun run "${EXPLAIN_D}/_new-writer.ts" write "$id" "$title" "$blurb" "$tags"
+
+echo
+heading "Verifying with doctor"
+"${EXPLAIN_D}/../explain" doctor
