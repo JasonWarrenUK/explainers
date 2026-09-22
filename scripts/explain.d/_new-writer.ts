@@ -5,8 +5,8 @@
 // §7.4) and preserves the tab indentation both files already use.
 //
 // Usage: bun run _new-writer.ts <mode> <id> <title> <blurb> <tags-csv>
-//   mode: "diff"  — print the diff and exit, write nothing
-//         "write" — perform the writes, all-or-nothing
+//   mode: "diff"   print the diff and exit, write nothing
+//         "write"  perform the writes, all-or-nothing
 //
 // Exit 0 on success, 1 with a message on stderr on any failure. On a
 // partial failure during "write", already-written files are restored from

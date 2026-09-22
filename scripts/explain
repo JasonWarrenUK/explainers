@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # explain: gum-driven CLI for the explainers repo.
 #
-# Discovery rules (this is how new commands get added — read this before
+# Discovery rules (this is how new commands get added; read this before
 # adding one):
 #
 #   1. A directory under explain.d/ is a menu GROUP. Its _group file
@@ -59,7 +59,7 @@ register_command() {
 	[[ -x "$file" ]] || return
 
 	if [[ -n "${EXPLAIN_COMMANDS[$name]:-}" ]]; then
-		die "duplicate command \"$name\" in both \"${EXPLAIN_COMMANDS[$name]}\" and \"$group\" — command names must be unique across groups"
+		die "duplicate command \"$name\" in both \"${EXPLAIN_COMMANDS[$name]%%:*}\" and \"$group\": command names must be unique across groups"
 	fi
 	EXPLAIN_COMMANDS[$name]="$group:$file"
 	EXPLAIN_COMMAND_DESC[$name]="$(describe_file "$file")"
@@ -94,7 +94,7 @@ done
 # ---- help / plain listing (pipe-safe, no TUI) ----------------------------
 
 print_help() {
-	echo "explain — CLI for the explainers repo"
+	echo "explain: CLI for the explainers repo"
 	echo
 	echo "Usage: explain [command] [args...]"
 	echo "       explain --help | -h"
@@ -130,7 +130,10 @@ run_menu() {
 		[[ ${#names[@]} -eq 0 ]] && continue
 		local title="${EXPLAIN_GROUP_TITLE[$group]:-$group}"
 		local desc="${EXPLAIN_GROUP_DESC[$group]}"
-		group_choices+=("${title}${desc:+ — $desc}:${group}")
+		# Parentheses, not a colon: gum choose splits label from value on
+		# the first colon (--label-delimiter below), so one in the description
+		# would truncate the label and corrupt the returned group.
+		group_choices+=("${title}${desc:+ ($desc)}:${group}")
 	done
 
 	local chosen
@@ -148,7 +151,7 @@ run_menu() {
 	local -a cmd_choices
 	cmd_choices=("« back:__back__")
 	for name in "${(@on)names}"; do
-		cmd_choices+=("${name}${EXPLAIN_COMMAND_DESC[$name]:+ — ${EXPLAIN_COMMAND_DESC[$name]}}:${name}")
+		cmd_choices+=("${name}${EXPLAIN_COMMAND_DESC[$name]:+ (${EXPLAIN_COMMAND_DESC[$name]})}:${name}")
 	done
 
 	local picked
