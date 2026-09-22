@@ -137,24 +137,39 @@ if (existsSync(componentAbsPath)) {
 }
 
 // All-or-nothing: back up the two files we're editing, write everything,
-// and restore from backup if anything after the first write throws.
+// and restore from backup if anything throws. Backups are taken inside the
+// try so a failed backup is reported through fail() rather than as a raw
+// stack trace, and every restore and cleanup step is guarded on existence,
+// since a backup that was never created must not be restored from or
+// unlinked. Cleanup is an explicit call rather than a finally block:
+// fail() ends with process.exit(), which skips finally.
 const explainersBackup = `${EXPLAINERS_PATH}.bak`;
 const registryBackup = `${REGISTRY_PATH}.bak`;
-copyFileSync(EXPLAINERS_PATH, explainersBackup);
-copyFileSync(REGISTRY_PATH, registryBackup);
+
+function cleanupBackups(): void {
+	for (const backup of [explainersBackup, registryBackup]) {
+		if (!existsSync(backup)) continue;
+		try {
+			unlinkSync(backup);
+		} catch {
+			// A stranded .bak is untidy, not a failure worth masking the real error for.
+		}
+	}
+}
 
 try {
+	copyFileSync(EXPLAINERS_PATH, explainersBackup);
+	copyFileSync(REGISTRY_PATH, registryBackup);
 	writeFileSync(EXPLAINERS_PATH, newExplainersSrc);
 	writeFileSync(REGISTRY_PATH, newRegistrySrc);
 	writeFileSync(componentAbsPath, componentStub);
 } catch (err) {
-	copyFileSync(explainersBackup, EXPLAINERS_PATH);
-	copyFileSync(registryBackup, REGISTRY_PATH);
+	if (existsSync(explainersBackup)) copyFileSync(explainersBackup, EXPLAINERS_PATH);
+	if (existsSync(registryBackup)) copyFileSync(registryBackup, REGISTRY_PATH);
 	if (existsSync(componentAbsPath)) unlinkSync(componentAbsPath);
+	cleanupBackups();
 	fail(`_new-writer.ts: write failed, restored originals: ${err}`);
-} finally {
-	unlinkSync(explainersBackup);
-	unlinkSync(registryBackup);
 }
+cleanupBackups();
 
 console.log(componentAbsPath);
