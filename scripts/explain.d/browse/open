@@ -6,18 +6,19 @@ source "${EXPLAIN_D}/_lib.sh"
 
 usage() {
 	echo "Usage: explain open [explainers|tags|collections] <id>" >&2
-	echo "Default target is explainers. With no id and a terminal, pick one interactively." >&2
+	echo "Default target is explainers; from the menu, you are asked which. With no id and a terminal, pick one interactively." >&2
 }
 
-target="${1:-explainers}"
-case "$target" in
+case "${1:-}" in
 	-h|--help) usage; exit 0 ;;
 esac
+target="$(pick_target "${1:-}")"
+[[ -z "$target" ]] && exit 0
 id="${2:-}"
 
 pick_id() {
 	local query="$1" label="$2"
-	if ! need_tty; then
+	if ! can_prompt; then
 		echo "explain open: missing id (no terminal to pick one interactively)" >&2
 		usage
 		exit 1

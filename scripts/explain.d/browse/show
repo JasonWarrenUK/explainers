@@ -6,23 +6,24 @@ source "${EXPLAIN_D}/_lib.sh"
 
 usage() {
 	echo "Usage: explain show [explainers|tags|collections] <id>" >&2
-	echo "Default target is explainers. With no id and a terminal, pick one interactively." >&2
+	echo "Default target is explainers; from the menu, you are asked which. With no id and a terminal, pick one interactively." >&2
 }
 
-target="${1:-explainers}"
-case "$target" in
+case "${1:-}" in
 	-h|--help) usage; exit 0 ;;
 esac
+target="$(pick_target "${1:-}")"
+[[ -z "$target" ]] && exit 0
 id="${2:-}"
 
 pick_id() {
-	local query="$1"
-	if ! need_tty; then
+	local query="$1" label="$2"
+	if ! can_prompt; then
 		echo "explain show: missing id (no terminal to pick one interactively)" >&2
 		usage
 		exit 1
 	fi
-	run_data "$query" | cut -f1 | gum filter --header "Pick a $2"
+	run_data "$query" | cut -f1 | gum filter --header "Pick a $label"
 }
 
 case "$target" in
@@ -44,12 +45,12 @@ case "$target" in
 		echo "component:  ${component:-(missing)} [$reg_status]"
 		;;
 	tags)
-		[[ -z "$id" ]] && id=$(printf '%s\n' $(run_data tags | cut -f1) | gum filter --header "Pick a tag")
+		[[ -z "$id" ]] && id=$(pick_id tags tag)
 		[[ -z "$id" ]] && exit 0
 		run_data tag "$id" | print_table "id,title,tags"
 		;;
 	collections)
-		[[ -z "$id" ]] && id=$(printf '%s\n' $(run_data collections | cut -f1) | gum filter --header "Pick a collection")
+		[[ -z "$id" ]] && id=$(pick_id collections collection)
 		[[ -z "$id" ]] && exit 0
 		full=$(run_data collection "$id") || exit 1
 		header_row=$(head -1 <<<"$full")

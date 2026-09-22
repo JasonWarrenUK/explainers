@@ -11,12 +11,39 @@ die() {
 	exit 1
 }
 
-# need_tty: true when both stdin and stdout are a real terminal. gum's
-# interactive pickers (choose, filter, input, confirm, table without -p)
-# fail without a TTY but still exit 0, so callers must check this explicitly
-# rather than trust the exit code of the gum call itself.
+# need_tty: true when both stdin and stdout are a real terminal, i.e. the
+# OUTPUT is going to a human rather than a pipe. Use it to choose between
+# an interactive menu and a plain listing.
 need_tty() {
 	[[ -t 0 && -t 1 ]]
+}
+
+# can_prompt: true when a human can answer a gum picker (choose, filter,
+# input, confirm). Checks stdin and stderr, NOT stdout: pickers are almost
+# always called inside `id=$(pick_id ...)`, where stdout is the capture pipe
+# but the picker itself draws on stderr and reads /dev/tty. Checking -t 1
+# there always fails, which is exactly the bug that made `open` and `show`
+# refuse to prompt when launched from the menu. gum's pickers exit 0 even
+# without a TTY, so callers must check this explicitly rather than trust
+# the exit code of the gum call itself.
+can_prompt() {
+	[[ -t 0 && -t 2 ]]
+}
+
+# pick_target [arg]: resolve the explainers|tags|collections target for a
+# browse command. An explicit argument always wins. With no argument, the
+# default is "explainers" from the shell (so `explain list` stays a one-shot),
+# but when the command was launched from the menu (EXPLAIN_MENU=1, set by
+# run_menu) there is no way to have typed an argument, so ask instead.
+pick_target() {
+	local given="${1:-}"
+	if [[ -n "$given" ]]; then
+		echo "$given"
+	elif [[ "${EXPLAIN_MENU:-0}" == "1" ]] && can_prompt; then
+		gum choose --header "Which kind?" explainers tags collections
+	else
+		echo explainers
+	fi
 }
 
 # print_table <columns> : render tab-separated rows from stdin as a bordered,

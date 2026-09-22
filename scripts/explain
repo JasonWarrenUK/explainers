@@ -130,7 +130,7 @@ run_menu() {
 		[[ ${#names[@]} -eq 0 ]] && continue
 		local title="${EXPLAIN_GROUP_TITLE[$group]:-$group}"
 		local desc="${EXPLAIN_GROUP_DESC[$group]}"
-		group_choices+=("${title}:${group}${desc:+ — $desc}")
+		group_choices+=("${title}${desc:+ — $desc}:${group}")
 	done
 
 	local chosen
@@ -156,6 +156,10 @@ run_menu() {
 		| gum choose --label-delimiter=':' --header="${EXPLAIN_GROUP_TITLE[$group]:-$group}") || exit 0
 	[[ -z "$picked" || "$picked" == "__back__" ]] && exec "$0"
 
+	# A command launched from the menu can't have been given arguments, so
+	# tell it (see pick_target in _lib.sh) to ask for what it would normally
+	# take from argv instead of silently using defaults.
+	export EXPLAIN_MENU=1
 	run_command "$picked"
 }
 
