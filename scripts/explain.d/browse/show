@@ -4,8 +4,6 @@ set -euo pipefail
 
 source "${EXPLAIN_D}/_lib.sh"
 
-border="${EXPLAIN_BORDER_STYLE:-rounded}"
-
 usage() {
 	echo "Usage: explain show [explainers|tags|collections] <id>" >&2
 	echo "Default target is explainers. With no id and a terminal, pick one interactively." >&2
@@ -48,7 +46,7 @@ case "$target" in
 	tags)
 		[[ -z "$id" ]] && id=$(printf '%s\n' $(run_data tags | cut -f1) | gum filter --header "Pick a tag")
 		[[ -z "$id" ]] && exit 0
-		run_data tag "$id" | gum table -s $'\t' -p -b "$border" -c "id,title,tags"
+		run_data tag "$id" | print_table "id,title,tags"
 		;;
 	collections)
 		[[ -z "$id" ]] && id=$(printf '%s\n' $(run_data collections | cut -f1) | gum filter --header "Pick a collection")

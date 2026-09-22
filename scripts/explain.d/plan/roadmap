@@ -16,17 +16,13 @@ output=$(run_data roadmap) || exit 1
 milestones=$(awk -F'\t' '$1 != "unblocked"' <<<"$output" || true)
 unblocked=$(awk -F'\t' '$1 == "unblocked"' <<<"$output" || true)
 
-border="${EXPLAIN_BORDER_STYLE:-rounded}"
-
 heading "Milestones"
-echo "$milestones" | cut -f2- | gum table -s $'\t' -p -b "$border" -c "milestone,name,status counts"
+echo "$milestones" | cut -f2- | print_table "milestone,name,status counts"
 
 echo
 heading "Unblocked"
 if [[ -n "$unblocked" ]]; then
-	# Note: gum table's -w/--widths has no effect in -p (static print) mode
-	# as of gum 0.17.0, so column width isn't constrained here.
-	echo "$unblocked" | cut -f2- | gum table -s $'\t' -p -b "$border" -c "id,description"
+	echo "$unblocked" | cut -f2- | print_table "id,description"
 else
 	echo "(none)"
 fi

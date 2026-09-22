@@ -11,22 +11,15 @@ usage() {
 
 target="${1:-explainers}"
 
-border="${EXPLAIN_BORDER_STYLE:-rounded}"
-
 case "$target" in
 	explainers)
-		# Note: gum table's -w/--widths has no effect in -p (static print) mode
-		# as of gum 0.17.0, so column width isn't constrained here.
-		run_data explainers \
-			| gum table -s $'\t' -p -b "$border" -c "id,title,tags"
+		run_data explainers | print_table "id,title,tags"
 		;;
 	tags)
-		run_data tags \
-			| gum table -s $'\t' -p -b "$border" -c "tag,explainers"
+		run_data tags | print_table "tag,explainers"
 		;;
 	collections)
-		run_data collections \
-			| gum table -s $'\t' -p -b "$border" -c "id,title,members"
+		run_data collections | print_table "id,title,members"
 		;;
 	-h|--help)
 		usage
