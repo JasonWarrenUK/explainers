@@ -5,6 +5,7 @@
 		lines,
 		family,
 		tokenise,
+		/** Unused by the current explainer; kept for the shared kit (PHASE_1 2PR.3). */
 		numbered = false,
 		showTechnical = false
 	}: {
