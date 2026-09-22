@@ -107,8 +107,9 @@
 		const v = (e.target as HTMLSelectElement).value;
 		if (v !== 'custom') loadPreset(Number(v));
 	}
-	function onControlsChange() {
+	function onControlsChange(k: keyof SimParams) {
 		setCustom();
+		if (k === 'time') stopPlay();
 	}
 
 	// ---- residence playback ----

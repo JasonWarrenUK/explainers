@@ -11,7 +11,7 @@
 	}: {
 		sim: SimParams;
 		playingKey?: ControlKey | null;
-		onchange: () => void;
+		onchange: (k: keyof SimParams) => void;
 		ontogglePlay: () => void;
 	} = $props();
 
@@ -34,11 +34,11 @@
 	function handleRange(k: ControlKey, log: boolean | undefined, min: number, max: number, raw: string) {
 		const n = Number(raw);
 		setNumeric(k, log ? logToValue(n, min, max) : n);
-		onchange();
+		onchange(k);
 	}
 	function resetOne(k: ControlKey) {
 		setNumeric(k, DEFAULTS[k] as number);
-		onchange();
+		onchange(k);
 	}
 </script>
 
@@ -58,7 +58,7 @@
 									class:on={sim.radSource === v}
 									onclick={() => {
 										sim.radSource = v as SimParams['radSource'];
-										onchange();
+										onchange('radSource');
 									}}>{l}</button
 								>
 							{/each}
@@ -72,7 +72,7 @@
 								aria-pressed={sim.hpht}
 								onclick={() => {
 									sim.hpht = !sim.hpht;
-									onchange();
+									onchange('hpht');
 								}}>{c.label}</button
 							>
 						</div>
