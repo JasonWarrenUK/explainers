@@ -15,7 +15,7 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 
 const REPO_ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
 
@@ -59,6 +59,36 @@ function registryComponentPath(id: string): string | undefined {
 	if (!fn) return undefined;
 	const match = fn.toString().match(/import\(['"](.+?)['"]\)/);
 	return match?.[1];
+}
+
+// Walk every .svelte and .ts file under `root`, resolve each relative import
+// specifier against the importing file and return the set of top-level
+// directory names (relative to `root`) those imports land in. Imports that
+// resolve outside `root`, or to a file at its top level, contribute nothing.
+function importedTopLevelDirs(root: string): Set<string> {
+	const dirs = new Set<string>();
+	const specifierPattern = /(?:from\s*|import\s*\(\s*|import\s+)['"](\.[^'"]+)['"]/g;
+
+	const walk = (dir: string): void => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const abs = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				walk(abs);
+				continue;
+			}
+			if (!/\.(svelte|ts)$/.test(entry.name)) continue;
+			const source = readFileSync(abs, 'utf8');
+			for (const match of source.matchAll(specifierPattern)) {
+				const resolved = relative(root, resolve(dir, match[1]));
+				if (resolved.startsWith('..')) continue;
+				const [first, ...rest] = resolved.split(sep);
+				if (rest.length > 0) dirs.add(first);
+			}
+		}
+	};
+
+	walk(root);
+	return dirs;
 }
 
 const [query, ...args] = process.argv.slice(2);
@@ -155,37 +185,32 @@ switch (query) {
 		}
 
 		const registryFileDir = join(REPO_ROOT, 'src/lib/components/explainers');
-		const usedDirs = new Set<string>();
 		for (const id of registryIds) {
 			const importPath = registryComponentPath(id);
 			if (!importPath) continue;
-			const abs = join(registryFileDir, importPath);
-			if (!existsSync(abs)) {
+			if (!existsSync(join(registryFileDir, importPath))) {
 				problems.push(`registry.ts entry "${id}" imports missing file "${importPath}"`);
 			}
-			// Record which top-level directory (if any) this import resolves into,
-			// so we can derive which directories are "shared layers" rather than
-			// hardcoding a list. norway-is-not-a-boolean's entry component lives
-			// one level above its own directory, so this only records directories
-			// the import path actually passes through.
-			const rel = importPath.replace(/^\.\//, '');
-			const firstSegment = rel.includes('/') ? rel.split('/')[0] : null;
-			if (firstSegment) usedDirs.add(firstSegment);
 		}
 
+		// A top-level directory is accounted for when any explainer source file
+		// (the registry, an entry component or a support module in another
+		// directory) imports something inside it. That covers per-explainer
+		// support directories, shared layers such as unhurried/ and formats/,
+		// and entry components that sit one level above their own directory,
+		// without hardcoding a list of any of them. What remains is a directory
+		// nothing reaches, which is drift.
 		const topLevelDirs = readdirSync(registryFileDir, { withFileTypes: true })
 			.filter((d) => d.isDirectory())
 			.map((d) => d.name);
-		// A directory also counts as "used" when its own name is a registered
-		// explainer id, even if the registry's import path resolves outside it
-		// (norway-is-not-a-boolean's entry component sits one level up from its
-		// support directory of the same name).
-		const unreferencedDirs = topLevelDirs.filter(
-			(d) => !usedDirs.has(d) && !registryIds.has(d)
-		);
+		const importedDirs = importedTopLevelDirs(registryFileDir);
+		for (const dir of topLevelDirs) {
+			if (!importedDirs.has(dir)) {
+				problems.push(`directory "${dir}" is imported by nothing under components/explainers`);
+			}
+		}
 
 		emit(problems.map((p) => ['problem', p]));
-		emit(unreferencedDirs.map((d) => ['no-direct-import', d]));
 		if (problems.length > 0) process.exit(1);
 		break;
 	}

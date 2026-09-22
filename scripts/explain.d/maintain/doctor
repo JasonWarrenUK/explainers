@@ -10,7 +10,6 @@ output=$(run_data doctor) || exit_code=$?
 # Plain prefix matching rather than grep -P: BSD grep (macOS default) has
 # no -P, and -E's \t handling is unreliable across grep implementations.
 problems=$(awk -F'\t' '$1 == "problem"' <<<"$output" || true)
-info=$(awk -F'\t' '$1 == "no-direct-import"' <<<"$output" || true)
 
 if [[ -n "$problems" ]]; then
 	gum style --foreground "${EXPLAIN_DANGER:-9}" --bold "explain doctor: drift found"
@@ -19,14 +18,6 @@ if [[ -n "$problems" ]]; then
 	done
 else
 	gum style --foreground "${EXPLAIN_OK:-10}" --bold "explain doctor: clean"
-fi
-
-if [[ -n "$info" ]]; then
-	echo
-	echo "Directories with no direct registry.ts import (shared layers, or an entry component living outside its own directory):"
-	echo "$info" | cut -f2- | while IFS= read -r line; do
-		echo "  · $line"
-	done
 fi
 
 exit "${exit_code:-0}"
