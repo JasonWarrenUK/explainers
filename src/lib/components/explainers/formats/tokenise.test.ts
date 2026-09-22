@@ -26,6 +26,10 @@ describe('createTokeniser', () => {
 		expect(tokenise('region: no', 'yaml').at(-1)).toEqual({ text: 'no', kind: 'lit' });
 	});
 
+	it('refuses a rule that sets regex flags', () => {
+		expect(() => createTokeniser({ x: [[/a/i, 'lit']] })).toThrow(/flags/);
+	});
+
 	it('marks XML tags, attributes and attribute values', () => {
 		const kinds = tokenise('<object accession="007">', 'xml').map((t) => t.kind);
 		expect(kinds).toEqual(['tag', null, 'att', 'pun', 'str', 'tag']);

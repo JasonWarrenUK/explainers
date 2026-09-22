@@ -22,10 +22,20 @@ export type Tokeniser = (line: string, family: string) => Token[];
 /**
  * One combined pattern per family, one capture group per rule. Inner groups
  * in the rules must be non-capturing so group indices stay aligned with them.
+ * Rules must not set flags: only `re.source` survives the concatenation, and
+ * a flag would apply to every rule in the family, so encode the intent in
+ * the pattern instead.
  */
 export function createTokeniser(rules: Record<string, TokenRule[]>): Tokeniser {
 	const combined = new Map<string, RegExp>();
 	for (const [family, specs] of Object.entries(rules)) {
+		for (const [re] of specs) {
+			if (re.flags !== '') {
+				throw new Error(
+					`Rule /${re.source}/${re.flags} in family "${family}" sets flags; encode the intent in the pattern instead`
+				);
+			}
+		}
 		combined.set(family, new RegExp(specs.map(([re]) => `(${re.source})`).join('|'), 'g'));
 	}
 
