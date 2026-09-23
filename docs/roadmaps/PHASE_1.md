@@ -59,12 +59,12 @@ Phase 1 closes those gaps in that order. A design system built in Claude Design 
 
 **Goal:** The nine explainers live at a real URL, and a stranger arriving from a shared link sees something deliberate.
 
-- [ ] **4PB.1**: Choose the hosting target and replace `adapter-auto` with the specific adapter
+- [x] **4PB.1**: Choose the hosting target and replace `adapter-auto` with the specific adapter
   - Note: Vercel and GitHub Pages are both in the toolchain already. Static output would suit a set of prerenderable essays.
 - [ ] **4PB.2**: Add per-explainer meta tags, canonical URLs and Open Graph data driven by `ExplainerMeta`
   - Note: The blurb and title already exist in the data; nothing reaches the document head yet.
 - [ ] **4PB.3**: Generate social cards for each explainer from the design system _(blocked: depends on 4PB.2, 1DS.4)_
-- [ ] **4PB.4**: Add a sitemap and replace the placeholder `robots.txt` _(blocked: depends on 4PB.1)_
+- [ ] **4PB.4**: Add a sitemap and replace the placeholder `robots.txt` _(depends on 4PB.1)_
 - [ ] **4PB.5**: Replace the stock `sv` README with one describing what this project actually is
 - [ ] **4PB.6**: Deploy, then verify every route, both themes and a cold share link on a real device _(blocked: depends on M1, 4PB.1, 4PB.3, 4PB.4, 3NV.5)_
 
@@ -178,7 +178,7 @@ graph LR
 	5QA.4 --> 5QA.6
 	5QA.5 -.-> M5
 	5QA.6 --> M5
-	class 1DS.1,2PR.1,3NV.1,3NV.3,4PB.1,4PB.2,4PB.5 todo
-	class 1DS.2,1DS.3,1DS.4,1DS.5,1DS.6,1DS.7,2PR.2,2PR.3,2PR.4,2PR.5,3NV.2,3NV.4,3NV.5,4PB.3,4PB.4,4PB.6,5QA.2,5QA.3,5QA.5,5QA.6 blocked
-	class 5QA.1,5QA.4 done
+	class 1DS.1,2PR.1,3NV.1,3NV.3,4PB.2,4PB.4,4PB.5 todo
+	class 1DS.2,1DS.3,1DS.4,1DS.5,1DS.6,1DS.7,2PR.2,2PR.3,2PR.4,2PR.5,3NV.2,3NV.4,3NV.5,4PB.3,4PB.6,5QA.2,5QA.3,5QA.5,5QA.6 blocked
+	class 4PB.1,5QA.1,5QA.4 done
 ```
