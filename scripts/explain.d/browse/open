@@ -1,0 +1,105 @@
+#!/usr/bin/env zsh
+# Description: Open an explainer, tag or collection page in the browser
+set -euo pipefail
+
+source "${EXPLAIN_D}/_lib.sh"
+
+usage() {
+	echo "Usage: explain open [explainers|tags|collections] <id>" >&2
+	echo "Default target is explainers; from the menu, you are asked which. With no id and a terminal, pick one interactively." >&2
+}
+
+case "${1:-}" in
+	-h|--help) usage; exit 0 ;;
+esac
+target="$(pick_target "${1:-}")"
+[[ -z "$target" ]] && exit 0
+id="${2:-}"
+
+pick_id() {
+	local query="$1" label="$2"
+	if ! can_prompt; then
+		echo "explain open: missing id (no terminal to pick one interactively)" >&2
+		usage
+		exit 1
+	fi
+	run_data "$query" | cut -f1 | gum filter --header "Pick a $label to open"
+}
+
+case "$target" in
+	explainers)
+		[[ -z "$id" ]] && id=$(pick_id explainers explainer)
+		[[ -z "$id" ]] && exit 0
+		run_data explainer "$id" >/dev/null || exit 1
+		route_path="/explainer/${id}"
+		;;
+	tags)
+		[[ -z "$id" ]] && id=$(pick_id tags tag)
+		[[ -z "$id" ]] && exit 0
+		route_path="/tag/${id}"
+		;;
+	collections)
+		[[ -z "$id" ]] && id=$(pick_id collections collection)
+		[[ -z "$id" ]] && exit 0
+		route_path="/collection/${id}"
+		;;
+	*)
+		echo "explain open: unknown target \"$target\"" >&2
+		usage
+		exit 1
+		;;
+esac
+
+# Reuse a dev server that's already running (any project's, since we can't
+# tell whose it is from the outside) rather than assuming port 5173: Vite
+# binds 5174+ when 5173 is busy, so we read the port back from Vite's own
+# "Local:" line instead of guessing. If nothing is up, we start one and wait
+# for that line to appear.
+port_from_log() {
+	grep -m1 -oE 'Local:.*http://[^ ]+:([0-9]+)' "$1" 2>/dev/null | grep -oE '[0-9]+$'
+}
+
+find_running_port() {
+	# Only worth reusing if the target ROUTE resolves, not just "something
+	# answers on /": a stray preview server or an unrelated project's dev
+	# server on a bun/node port both answer "/" but would 404 on our route,
+	# which is exactly the wrong-server case we need to avoid.
+	lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null \
+		| awk '$1 ~ /node|bun/ { print $9 }' \
+		| grep -oE '[0-9]+$' \
+		| while read -r p; do
+			code=$(curl -s -o /dev/null -m 1 -w '%{http_code}' "http://localhost:${p}${route_path}")
+			[[ "$code" == "200" ]] && echo "$p" && break
+		done
+}
+
+port="$(find_running_port | head -1)" || true
+
+if [[ -z "$port" ]]; then
+	log="$(mktemp)"
+	bun run --cwd "$EXPLAIN_REPO_ROOT" dev >"$log" 2>&1 &
+	dev_pid=$!
+	disown
+	for _ in $(seq 1 50); do
+		port="$(port_from_log "$log")" || true
+		[[ -n "$port" ]] && break
+		sleep 0.2
+	done
+	if [[ -z "$port" ]]; then
+		# Kill the server we started rather than leave it running untracked,
+		# and show its log first: it holds the reason (port clash, build
+		# error) that the user would otherwise lose. Both steps must be
+		# non-failing under set -e or die never runs.
+		kill "$dev_pid" 2>/dev/null || true
+		echo "--- dev server log ---" >&2
+		cat "$log" >&2 || true
+		rm -f "$log"
+		die "dev server did not report a port in time; see log above"
+	fi
+	rm -f "$log"
+	heading "Started dev server on port $port"
+fi
+
+url="http://localhost:${port}${route_path}"
+echo "Opening: $url"
+open "$url"

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { explainers, getAllTags, getExplainer, getExplainersByTag } from './explainers';
 import { collections, getCollection } from './collections';
+import { explainerComponents } from '$lib/components/explainers/registry';
 
 describe('getExplainer', () => {
 	it('finds an explainer by id', () => {
@@ -54,6 +55,12 @@ describe('explainers', () => {
 	it('has no duplicate ids', () => {
 		const ids = explainers.map((e) => e.id);
 		expect(new Set(ids).size).toBe(ids.length);
+	});
+
+	it('every explainer has a registered component', () => {
+		for (const e of explainers) {
+			expect(explainerComponents[e.id], `${e.id} has no component`).toBeDefined();
+		}
 	});
 
 	it('every explainer has at least one tag', () => {

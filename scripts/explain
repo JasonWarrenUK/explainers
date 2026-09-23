@@ -1,0 +1,204 @@
+#!/usr/bin/env zsh
+# explain: gum-driven CLI for the explainers repo.
+#
+# Discovery rules (this is how new commands get added; read this before
+# adding one):
+#
+#   1. A directory under explain.d/ is a menu GROUP. Its _group file
+#      supplies a Title: and Description: line for the top-level menu.
+#   2. An executable file inside a group directory is a COMMAND. Its
+#      "# Description:" header comment supplies its menu line and its
+#      --help text.
+#   3. A command file sitting at explain.d/ root, in no group, is
+#      auto-filed under the "inbox" group. This is what keeps "every
+#      future explain command must be added to explain" true by
+#      construction: a command that exists is a command the menu shows,
+#      with no edit to this file.
+#   4. Files starting with "_" are never commands or groups.
+#   5. Command names must be globally unique across groups. explain
+#      refuses to start if two groups define the same command name.
+#
+# Dispatch is always flat regardless of menu nesting: `explain doctor`,
+# never `explain maintain doctor`.
+
+set -euo pipefail
+
+EXPLAIN_REPO_ROOT="${0:A:h:h}"
+EXPLAIN_D="${0:A:h}/explain.d"
+export EXPLAIN_REPO_ROOT EXPLAIN_D
+
+source "${EXPLAIN_D}/_lib.sh"
+source "${EXPLAIN_D}/_theme.sh"
+
+require_gum
+load_theme || true # degrade to unstyled; commands check EXPLAIN_THEME_LOADED if they care
+
+# ---- discovery ----------------------------------------------------------
+
+typeset -a EXPLAIN_GROUP_DIRS
+EXPLAIN_GROUP_DIRS=("${EXPLAIN_D}"/*(/N))
+
+# name -> "group:path", built once per invocation
+typeset -A EXPLAIN_COMMANDS
+typeset -A EXPLAIN_COMMAND_DESC
+typeset -A EXPLAIN_GROUP_TITLE
+typeset -A EXPLAIN_GROUP_DESC
+
+describe_file() {
+	# Prints the "# Description: ..." header line's value, or "" if absent.
+	# A missing header makes grep exit 1, which would otherwise kill
+	# discovery under set -euo pipefail, so this must not propagate that.
+	local file="$1"
+	grep -m1 '^# Description:' "$file" 2>/dev/null | sed 's/^# Description: *//' || true
+}
+
+register_command() {
+	local group="$1" file="$2"
+	local name="${file:t}"
+	[[ "$name" == _* ]] && return
+	[[ -x "$file" ]] || return
+
+	if [[ -n "${EXPLAIN_COMMANDS[$name]:-}" ]]; then
+		die "duplicate command \"$name\" in both \"${EXPLAIN_COMMANDS[$name]%%:*}\" and \"$group\": command names must be unique across groups"
+	fi
+	EXPLAIN_COMMANDS[$name]="$group:$file"
+	EXPLAIN_COMMAND_DESC[$name]="$(describe_file "$file")"
+}
+
+for group_dir in "${EXPLAIN_GROUP_DIRS[@]}"; do
+	group="${group_dir:t}"
+	group_file="${group_dir}/_group"
+	if [[ -f "$group_file" ]]; then
+		# The `|| true` matters: a _group file missing a Title: or
+		# Description: line makes grep -m1 exit 1, which under
+		# set -euo pipefail would otherwise kill discovery entirely.
+		EXPLAIN_GROUP_TITLE[$group]="$(grep -m1 '^Title:' "$group_file" | sed 's/^Title: *//')" || true
+		EXPLAIN_GROUP_DESC[$group]="$(grep -m1 '^Description:' "$group_file" | sed 's/^Description: *//')" || true
+	else
+		EXPLAIN_GROUP_TITLE[$group]="$group"
+		EXPLAIN_GROUP_DESC[$group]=""
+	fi
+	for file in "$group_dir"/*(.N); do
+		register_command "$group" "$file"
+	done
+done
+
+# Files dropped at explain.d/ root, outside any group, auto-file under inbox.
+for file in "${EXPLAIN_D}"/*(.N); do
+	name="${file:t}"
+	[[ "$name" == _* ]] && continue
+	[[ -x "$file" ]] || continue
+	register_command "inbox" "$file"
+done
+
+# ---- help / plain listing (pipe-safe, no TUI) ----------------------------
+
+print_help() {
+	echo "explain: CLI for the explainers repo"
+	echo
+	echo "Usage: explain [command] [args...]"
+	echo "       explain --help | -h"
+	echo
+	for group_dir in "${EXPLAIN_GROUP_DIRS[@]}"; do
+		group="${group_dir:t}"
+		local -a names
+		names=()
+		for name in "${(@k)EXPLAIN_COMMANDS}"; do
+			[[ "${EXPLAIN_COMMANDS[$name]%%:*}" == "$group" ]] && names+=("$name")
+		done
+		[[ ${#names[@]} -eq 0 ]] && continue
+		echo "${EXPLAIN_GROUP_TITLE[$group]:-$group}:"
+		for name in "${(@on)names}"; do
+			printf '  %-12s %s\n' "$name" "${EXPLAIN_COMMAND_DESC[$name]}"
+		done
+		echo
+	done
+}
+
+# ---- interactive menu -----------------------------------------------------
+
+run_menu() {
+	local -a group_choices
+	group_choices=()
+	for group_dir in "${EXPLAIN_GROUP_DIRS[@]}"; do
+		group="${group_dir:t}"
+		local -a names
+		names=()
+		for name in "${(@k)EXPLAIN_COMMANDS}"; do
+			[[ "${EXPLAIN_COMMANDS[$name]%%:*}" == "$group" ]] && names+=("$name")
+		done
+		[[ ${#names[@]} -eq 0 ]] && continue
+		local title="${EXPLAIN_GROUP_TITLE[$group]:-$group}"
+		local desc="${EXPLAIN_GROUP_DESC[$group]}"
+		# Parentheses, not a colon: gum choose splits label from value on
+		# the first colon (--label-delimiter below), so one in the description
+		# would truncate the label and corrupt the returned group.
+		group_choices+=("${title}${desc:+ ($desc)}:${group}")
+	done
+
+	local chosen
+	chosen=$(printf '%s\n' "${group_choices[@]}" \
+		| gum choose --label-delimiter=':' --header="explain") || exit 0
+	[[ -z "$chosen" ]] && exit 0
+	local group="$chosen"
+
+	local -a names
+	names=()
+	for name in "${(@k)EXPLAIN_COMMANDS}"; do
+		[[ "${EXPLAIN_COMMANDS[$name]%%:*}" == "$group" ]] && names+=("$name")
+	done
+
+	local -a cmd_choices
+	cmd_choices=("« back:__back__")
+	for name in "${(@on)names}"; do
+		cmd_choices+=("${name}${EXPLAIN_COMMAND_DESC[$name]:+ (${EXPLAIN_COMMAND_DESC[$name]})}:${name}")
+	done
+
+	local picked
+	picked=$(printf '%s\n' "${cmd_choices[@]}" \
+		| gum choose --label-delimiter=':' --header="${EXPLAIN_GROUP_TITLE[$group]:-$group}") || exit 0
+	[[ -z "$picked" || "$picked" == "__back__" ]] && exec "$0"
+
+	# A command launched from the menu can't have been given arguments, so
+	# tell it (see pick_target in _lib.sh) to ask for what it would normally
+	# take from argv instead of silently using defaults.
+	export EXPLAIN_MENU=1
+	run_command "$picked"
+}
+
+# ---- run ------------------------------------------------------------------
+
+run_command() {
+	local name="$1"
+	shift || true
+	local entry="${EXPLAIN_COMMANDS[$name]:-}"
+	if [[ -z "$entry" ]]; then
+		gum style --foreground "${EXPLAIN_DANGER:-9}" "explain: no such command \"$name\"" >&2
+		echo "Nearest:" >&2
+		printf '%s\n' "${(@k)EXPLAIN_COMMANDS}" | grep -i "$name" >&2 || true
+		exit 1
+	fi
+	local file="${entry#*:}"
+	exec "$file" "$@"
+}
+
+# ---- entry ------------------------------------------------------------------
+
+if [[ $# -eq 0 ]]; then
+	if need_tty; then
+		run_menu
+	else
+		print_help
+	fi
+	exit 0
+fi
+
+case "$1" in
+	-h|--help)
+		print_help
+		exit 0
+		;;
+	*)
+		run_command "$@"
+		;;
+esac

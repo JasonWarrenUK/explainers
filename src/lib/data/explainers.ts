@@ -64,6 +64,27 @@ export const explainers: ExplainerMeta[] = [
 		blurb:
 			'How you find out what a group thinks, when the only thing you can collect is what individuals say, one at a time.',
 		tags: ['data', 'ethics', 'software-design']
+	},
+	{
+		id: 'norway-is-not-a-boolean',
+		title: 'Norway Is Not a Boolean',
+		blurb:
+			"Norway's country code is NO, and one of the most widely used file formats reads a bare NO as the word no. Ten decisions about one museum record show what each format decides you meant.",
+		tags: ['data', 'software-design']
+	},
+	{
+		id: 'last-verified',
+		title: 'Last Verified',
+		blurb:
+			'A five-sentence letter was cited 608 times, and four fifths of the citations dropped the condition that made it true. What does a review process decide, in advance, not to look at?',
+		tags: ['software-design', 'documentation']
+	},
+	{
+		id: 'colour-is-a-defect',
+		title: 'Colour Is a Defect',
+		blurb:
+			'A perfect diamond lattice is colourless. Every colour, from Cape yellow to the Hope’s blue, is a wrong atom, a missing one or a shear through the crystal: set what the mantle did and read the grade.',
+		tags: ['science', 'data']
 	}
 ];
 
