@@ -1,6 +1,6 @@
 # Explainers PHASE_1: Roadmap Overview
 
-**29 tasks across 5 milestones.** Files: `.claude/roadmaps.json` (machine-readable), `docs/roadmaps/PHASE_1.md` (full task list with Mermaid dependency diagram).
+**30 tasks across 5 milestones.** Files: `.claude/roadmaps.json` (machine-readable), `docs/roadmaps/PHASE_1.md` (full task list with Mermaid dependency diagram).
 
 > Phase 1 starts from a working set of nine ported explainers. Nothing already built appears as a task: the roadmap is forward-looking, and statuses come out of `roadmap.py recompute` rather than judgement.
 
@@ -8,7 +8,7 @@
 
 ## What we're building
 
-The porting work is done. Nine explainers run as Svelte components, `registry.ts` resolves each id to a lazy import, `collections.ts` and the tag functions group them, and `ExplainerNav` moves a reader between them. That is a working site and almost nothing else. It has no visual identity beyond whatever hex values each explainer arrived with, no public address, no meta tags and one test file guarding twenty-nine components.
+The porting work is done. Twelve explainers run as Svelte components, `registry.ts` resolves each id to a lazy import, `collections.ts` and the tag functions group them, and `ExplainerNav` moves a reader between them. That is a working site and almost nothing else. It has no visual identity beyond whatever hex values each explainer arrived with, no public address, no meta tags and five test files guarding fifty-nine components.
 
 Phase 1 delivers four things on top of that. A design system authored in Claude Design and synced into the repo, so colour lives in one place instead of inline in every route. A kit of shared primitives pulled out of the toys, so the eleven interactive components in `cost-of-looking-fine` stop being the template for writing the next eleven by hand. Discovery that works the way readers actually move, including the back-link that currently guesses. And a deployment with the metadata a shared link needs.
 
